@@ -4,6 +4,7 @@ import dev.flowengine.workflow.WorkflowGraph;
 import dev.flowengine.workflow.WorkflowService;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -25,9 +26,10 @@ public class ExecutionService {
 
     public record Detail(UUID id, UUID workflowId, long workflowRevision, WorkflowGraph graph, String status,
                          Instant requestedAt, Instant startedAt, Instant finishedAt,
+                         Map<String, Object> input,
                          List<ExecutionEngine.NodeResult> results, String error) {}
 
-    public record Claim(WorkflowGraph graph, Instant deadline) {}
+    public record Claim(WorkflowGraph graph, Map<String, Object> input, Instant deadline) {}
 
     private final ExecutionRepository executions;
     private final WorkflowService workflows;
@@ -38,9 +40,9 @@ public class ExecutionService {
     }
 
     @Transactional
-    public Detail request(UUID workflowId, String owner, long revision) {
+    public Detail request(UUID workflowId, String owner, long revision, Map<String, Object> input) {
         var snapshot = workflows.snapshot(workflowId, owner, revision);
-        return executions.save(new Execution(snapshot)).detail();
+        return executions.save(new Execution(snapshot, input)).detail();
     }
 
     @Transactional(readOnly = true)

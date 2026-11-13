@@ -47,7 +47,7 @@ public class NodeRegistry {
 
     private static final class ManualTrigger implements NodeType {
         @Override public Definition definition() {
-            return new Definition(MANUAL, "Manual Trigger", "Start a workflow on demand.", false, true, List.of());
+            return new Definition(MANUAL, "Manual Trigger", "Start a workflow with optional JSON input.", false, true, List.of());
         }
 
         @Override public void validate(Map<String, Object> config) {
@@ -55,7 +55,7 @@ public class NodeRegistry {
         }
 
         @Override public Output execute(Map<String, Object> config, Map<String, Object> input) {
-            return new Output(Map.of(), null);
+            return new Output(input, null);
         }
     }
 

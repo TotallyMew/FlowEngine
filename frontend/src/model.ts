@@ -44,7 +44,7 @@ export type NodeResult = {
   message: string | null
   error: string | null
 }
-export type Run = RunSummary & { workflowId: string; graph: Graph; results: NodeResult[]; error: string | null }
+export type Run = RunSummary & { workflowId: string; graph: Graph; input: JsonObject; results: NodeResult[]; error: string | null }
 
 export type CanvasNode = Node<{
   kind: NodeKind

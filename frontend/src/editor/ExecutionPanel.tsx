@@ -73,6 +73,8 @@ export function ExecutionPanel({ workflowId, runId, selectedNode, run, runError,
             </div>
             {run.error && <p className="notice error" role="alert">{run.error}</p>}
             {activeRun(run.status) && <p role="status" className="muted">{run.status === 'PENDING' ? 'Waiting for a worker…' : 'Executing workflow…'}</p>}
+            {!run.results.length && run.input && <div className="payloads"><div><h4>Run input</h4>
+              <pre>{JSON.stringify(run.input, null, 2)}</pre></div></div>}
             {!!run.results.length && <div className="result-grid">
               <div className="result-nodes" aria-label="Node results">
                 {run.results.map(node => <button key={node.nodeId} className="result-row" onClick={() => selectNode(node.nodeId)}

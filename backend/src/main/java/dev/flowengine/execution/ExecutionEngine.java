@@ -36,7 +36,7 @@ public class ExecutionEngine {
         this.clock = clock;
     }
 
-    public Outcome run(WorkflowGraph graph, Instant deadline) {
+    public Outcome run(WorkflowGraph graph, Map<String, Object> runInput, Instant deadline) {
         var plan = validator.validate(graph, true);
         var outputs = new HashMap<String, Map<String, Object>>();
         var results = new ArrayList<NodeResult>();
@@ -48,7 +48,7 @@ public class ExecutionEngine {
             }
 
             var parent = plan.parents().get(node.id());
-            Map<String, Object> input = parent == null ? Map.of() : outputs.get(parent);
+            Map<String, Object> input = parent == null ? runInput : outputs.get(parent);
             var start = clock.instant();
             try {
                 checkDeadline(deadline);

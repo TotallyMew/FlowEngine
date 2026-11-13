@@ -60,7 +60,8 @@ Use a Java 25 JDK and Node.js 24 LTS. Check that `JAVA_HOME` points to the Java 
 1. Create a workflow and drag **Manual Trigger**, **Set Data**, and **Log** onto the canvas. Clicking a node in the library also places it.
 2. Select **Set Data** and enter `{"ticket":"FE-42","priority":2}` in **Values**. Set the Log message to `Payload recorded.`
 3. Connect **Manual Trigger → Set Data → Log** by dragging from each right port to the next left port. The configuration panel also has a target picker for keyboard users.
-4. Select **Save** or press **Ctrl+S**, then select **Run workflow**. Open the **Executions** panel to inspect the snapshot, log message, and JSON. You can reopen that run from history after a reload.
+4. Select **Save** or press **Ctrl+S**, then select **Run workflow**. Enter a JSON object such as `{"sku":"BIKE-123"}` and select **Run**. An empty field starts the workflow with `{}`.
+5. In **Executions**, inspect the log and the output containing both the SKU and the fields added by **Set Data**. Return to the editor and run the same revision with another SKU. Each execution keeps its own input and output.
 
 ## Verification
 

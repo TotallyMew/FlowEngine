@@ -81,7 +81,7 @@ class ExecutionQueue {
         runs.claim(id).ifPresent(claim -> {
             ExecutionEngine.Outcome outcome;
             try {
-                outcome = engine.run(claim.graph(), claim.deadline());
+                outcome = engine.run(claim.graph(), claim.input(), claim.deadline());
             } catch (RuntimeException ex) {
                 log.error("Engine could not process execution {} ({})", id, ex.getClass().getSimpleName());
                 outcome = new ExecutionEngine.Outcome(List.of(), "Worker could not process the saved workflow.");

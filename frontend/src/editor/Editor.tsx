@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react'
 import { ReactFlowProvider } from '@xyflow/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Copy, Ellipsis, Play, RotateCcw, Save, Trash2 } from 'lucide-react'
+import { ArrowLeft, Copy, Ellipsis, RotateCcw, Save, Trash2 } from 'lucide-react'
 import { AlertDialog, DropdownMenu } from 'radix-ui'
 import { useStore } from 'zustand'
 import { api, ApiError, errorText } from '../api'
 import { activeRun } from '../model'
-import type { Draft, NodeDefinition } from '../model'
+import type { Draft, JsonObject, NodeDefinition } from '../model'
 import { Canvas } from './Canvas'
 import { ExecutionPanel } from './ExecutionPanel'
 import { configProblem, serializeGraph } from './graph'
 import { Inspector } from './Inspector'
+import { RunInputDialog } from './RunInputDialog'
 import { createEditor, isDirty } from './store'
 
 type Props = {
@@ -31,6 +32,7 @@ export function Editor({ draft, definitions, onDirty, selectWorkflow, sessionExp
   const [runId, setRunId] = useState<string | null>(null)
   const [resultNode, setResultNode] = useState<string | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [runInputOpen, setRunInputOpen] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [draftLoad, setDraftLoad] = useState(0)
 
@@ -65,8 +67,9 @@ export function Editor({ draft, definitions, onDirty, selectWorkflow, sessionExp
   }
 
   const execute = useMutation({
-    mutationFn: () => api.run(draft.id, store.getState().revision),
+    mutationFn: (input: JsonObject) => api.run(draft.id, store.getState().revision, input),
     onSuccess: queued => {
+      setRunInputOpen(false)
       client.setQueryData(['execution', draft.id, queued.id], queued)
       void client.invalidateQueries({ queryKey: ['executions', draft.id] })
       openRun(queued.id)
@@ -102,8 +105,8 @@ export function Editor({ draft, definitions, onDirty, selectWorkflow, sessionExp
     },
   })
 
-  const error = save.error ?? execute.error ?? duplicate.error ?? remove.error ?? reload.error
-  const expired = [error, run.error].some(item => item instanceof ApiError && item.status === 401)
+  const error = save.error ?? duplicate.error ?? remove.error ?? reload.error
+  const expired = [error, run.error, execute.error].some(item => item instanceof ApiError && item.status === 401)
   useEffect(() => { if (expired) sessionExpired() }, [expired, sessionExpired])
 
   function clearErrors() {
@@ -118,7 +121,7 @@ export function Editor({ draft, definitions, onDirty, selectWorkflow, sessionExp
   const busy = save.isPending || execute.isPending || duplicate.isPending || remove.isPending || reload.isPending
 
   const submitSave = () => {
-    if (busy || runId || !isDirty(store.getState())) return
+    if (busy || runId || runInputOpen || !isDirty(store.getState())) return
     clearErrors()
     const state = store.getState()
     const invalid = state.nodes.find(node => !node.data.label.trim() || state.configText[node.id] !== undefined
@@ -157,8 +160,9 @@ export function Editor({ draft, definitions, onDirty, selectWorkflow, sessionExp
       </div>
       {!runId && <div className="toolbar-actions">
         <button className="button" title="Save (Ctrl+S)" disabled={busy || !dirty || !!runId} onClick={submitSave}><Save size={15} /> {save.isPending ? 'Saving…' : 'Save'}</button>
-        <button className="button primary" title={dirty ? 'Save changes before running' : 'Run the saved workflow'}
-          disabled={busy || dirty || !!runId} onClick={() => { clearErrors(); execute.mutate() }}><Play size={15} /> {execute.isPending ? 'Queueing…' : 'Run workflow'}</button>
+        <RunInputDialog open={runInputOpen} onOpenChange={open => { clearErrors(); setRunInputOpen(open) }}
+          pending={execute.isPending} error={execute.error} disabled={busy || dirty} dirty={dirty}
+          onRun={input => execute.mutate(input)} />
         <DropdownMenu.Root>
           <DropdownMenu.Trigger asChild><button className="icon-button menu-trigger" aria-label="Workflow actions" disabled={busy || !!runId}><Ellipsis size={18} /></button></DropdownMenu.Trigger>
           <DropdownMenu.Portal><DropdownMenu.Content className="menu" align="end" sideOffset={6}>

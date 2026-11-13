@@ -26,7 +26,7 @@ export function initialConfig(type: NodeKind): NodeConfig {
   }
 }
 
-export function parseValues(text: string): JsonObject {
+export function parseJsonObject(text: string, label: string): JsonObject {
   let parsed: unknown
   try {
     parsed = JSON.parse(text)
@@ -34,10 +34,15 @@ export function parseValues(text: string): JsonObject {
     throw new Error('Enter valid JSON.')
   }
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('Values must be a JSON object.')
+    throw new Error(`${label} must be a JSON object.`)
   }
-  if (Object.keys(parsed).length > 100) throw new Error('Use at most 100 top-level fields.')
   return parsed as JsonObject
+}
+
+export function parseValues(text: string): JsonObject {
+  const parsed = parseJsonObject(text, 'Values')
+  if (Object.keys(parsed).length > 100) throw new Error('Use at most 100 top-level fields.')
+  return parsed
 }
 
 export function configProblem(kind: NodeKind, config: NodeConfig): string | undefined {
