@@ -86,6 +86,14 @@ Invoke-RestMethod -Method Post -Uri $url `
 
 The endpoint returns HTTP `202` with an `executionId`. Open **Executions** to view the run. Enabling the webhook binds it to the saved revision. Saving a new revision requires enabling the webhook again and supplying the new token to the caller. The toolbar also offers token rotation and disabling.
 
+### Send the result to an HTTPS API
+
+Set `FLOW_HTTP_ALLOWED_HOSTS` to the exact hostnames that may receive workflow data. With Compose, set it in `.env` and run `docker compose up -d` to apply the configuration. For a local test with synthetic data, allow `httpbingo.org`.
+
+Connect **Webhook Trigger → Transform Data → HTTP Request**. Set the mapping to `{"productCode":"sku","priceEur":"price"}`, then choose **POST** and enter `https://httpbingo.org/post` as the **URL**. Save the workflow, enable the webhook, and send the sample payload above. The HTTP node’s output in **Executions** includes the response `status` and `body`. The test API echoes the submitted fields under `body.json`. [HTTP testing endpoints](https://httpbingo.org/)
+
+The node supports GET, POST, PUT, PATCH, and DELETE. POST, PUT, and PATCH send the node input as JSON. The URL is fixed in the saved workflow. Each call has a ten-second budget and a 64 KiB response body limit.
+
 ## Verification
 
 Run the backend suite with Docker Desktop active.
@@ -125,6 +133,7 @@ npm.cmd run test:e2e
 | `FLOW_BIND_ADDRESS` / `FLOW_PORT` | Host Spring Boot listen address and port | `127.0.0.1` / `8080` |
 | `FLOW_SECURE_COOKIE` | Require HTTPS for the session cookie | `false` for loopback HTTP |
 | `FLOW_WEB_PORT` | Host UI port when using Compose | `5173` |
+| `FLOW_HTTP_ALLOWED_HOSTS` | Comma-separated exact HTTPS destination hostnames | Empty |
 | `FLOW_DEV_API` | Vite’s backend proxy target | `http://127.0.0.1:8080` |
 | `FLOW_E2E_URL` | Playwright target | `http://127.0.0.1:5173` |
 

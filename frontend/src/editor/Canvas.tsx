@@ -2,7 +2,7 @@ import {
   Background, Controls, Handle, MiniMap, Position, ReactFlow, useReactFlow,
 } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
-import { Check, Code2, GitFork, Minus, Plus, Shuffle, SquareTerminal, Webhook, X, Zap } from 'lucide-react'
+import { Check, Code2, GitFork, Globe, Minus, Plus, Shuffle, SquareTerminal, Webhook, X, Zap } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useStore } from 'zustand'
 import { isTrigger } from '../model'
@@ -15,6 +15,7 @@ export const nodePresentation = {
   WEBHOOK_TRIGGER: { icon: Webhook, color: 'trigger', category: 'Trigger' },
   SET_DATA: { icon: Code2, color: 'data', category: 'Data' },
   TRANSFORM_DATA: { icon: Shuffle, color: 'data', category: 'Data' },
+  HTTP_REQUEST: { icon: Globe, color: 'http', category: 'Action' },
   LOG: { icon: SquareTerminal, color: 'log', category: 'Utility' },
   CONDITION: { icon: GitFork, color: 'condition', category: 'Logic' },
 }
@@ -132,7 +133,13 @@ export function Canvas({ store, definitions, run, selectResult, resultNode }: Pr
         <Controls showInteractive={false} />
         {shownNodes.length > 0 && <MiniMap<CanvasNode> pannable zoomable maskColor="#0d142280" nodeColor={node => {
           const color = nodePresentation[node.data.kind].color
-          return color === 'trigger' ? '#8fa9ff' : color === 'data' ? '#5ccabc' : color === 'condition' ? '#c9a4fa' : '#e2ac6f'
+          switch (color) {
+            case 'trigger': return '#8fa9ff'
+            case 'data': return '#5ccabc'
+            case 'condition': return '#c9a4fa'
+            case 'http': return '#7dccfa'
+            default: return '#e2ac6f'
+          }
         }} />}
       </ReactFlow>
       {shownNodes.length === 0 && !run && <div className="canvas-empty">

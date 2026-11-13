@@ -1,6 +1,7 @@
 package dev.flowengine.execution;
 
 import dev.flowengine.node.NodeRegistry;
+import dev.flowengine.node.NodeExecutionException;
 import dev.flowengine.workflow.GraphValidator;
 import dev.flowengine.workflow.WorkflowGraph;
 import java.time.Clock;
@@ -54,13 +55,16 @@ public class ExecutionEngine {
             var start = clock.instant();
             try {
                 checkDeadline(deadline);
-                var output = registry.execute(node.type(), node.config(), input);
+                var output = registry.execute(node.type(), node.config(), input, deadline);
                 checkDeadline(deadline);
                 outputs.put(node.id(), output);
                 results.add(new NodeResult(node.id(), NodeStatus.COMPLETED, start, clock.instant(), input,
                         output.data(), output.message(), null, output.port()));
             } catch (DeadlineExceeded ex) {
                 error = "Execution timed out.";
+                results.add(new NodeResult(node.id(), NodeStatus.FAILED, start, clock.instant(), input, null, null, error, null));
+            } catch (NodeExecutionException ex) {
+                error = ex.getMessage();
                 results.add(new NodeResult(node.id(), NodeStatus.FAILED, start, clock.instant(), input, null, null, error, null));
             } catch (RuntimeException ex) {
                 error = "Node execution failed.";

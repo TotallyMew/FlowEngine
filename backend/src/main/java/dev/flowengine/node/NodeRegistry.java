@@ -1,6 +1,7 @@
 package dev.flowengine.node;
 
 import dev.flowengine.workflow.GraphException;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,18 +26,22 @@ public class NodeRegistry {
         }
     }
 
-    private interface NodeType {
+    interface NodeType {
         Definition definition();
         void validate(Map<String, Object> config);
-        Output execute(Map<String, Object> config, Map<String, Object> input);
+        Output execute(Map<String, Object> config, Map<String, Object> input, Instant deadline);
     }
 
     public static final String MANUAL_TRIGGER = "MANUAL_TRIGGER";
     public static final String WEBHOOK_TRIGGER = "WEBHOOK_TRIGGER";
-    private final List<NodeType> types = List.of(
-            new Trigger(MANUAL_TRIGGER, "Manual Trigger", "Start a workflow with optional JSON input."),
-            new Trigger(WEBHOOK_TRIGGER, "Webhook Trigger", "Start a workflow from an authenticated HTTP request."),
-            new Condition(), new SetData(), new TransformData(), new Log());
+    private final List<NodeType> types;
+
+    public NodeRegistry(HttpRequestNode httpRequest) {
+        types = List.of(
+                new Trigger(MANUAL_TRIGGER, "Manual Trigger", "Start a workflow with optional JSON input."),
+                new Trigger(WEBHOOK_TRIGGER, "Webhook Trigger", "Start a workflow from an authenticated HTTP request."),
+                new Condition(), new SetData(), new TransformData(), httpRequest, new Log());
+    }
 
     public List<Definition> definitions() {
         return types.stream().map(NodeType::definition).toList();
@@ -50,8 +55,8 @@ public class NodeRegistry {
         find(type).validate(config);
     }
 
-    public Output execute(String type, Map<String, Object> config, Map<String, Object> input) {
-        return find(type).execute(config, input);
+    public Output execute(String type, Map<String, Object> config, Map<String, Object> input, Instant deadline) {
+        return find(type).execute(config, input, deadline);
     }
 
     private NodeType find(String type) {
@@ -68,7 +73,7 @@ public class NodeRegistry {
             if (!config.isEmpty()) throw new GraphException(label + " has no configuration fields.");
         }
 
-        @Override public Output execute(Map<String, Object> config, Map<String, Object> input) {
+        @Override public Output execute(Map<String, Object> config, Map<String, Object> input, Instant deadline) {
             return new Output(input, null);
         }
     }
@@ -95,7 +100,7 @@ public class NodeRegistry {
             throw new GraphException("Select Is empty or provide a text value for Equals.");
         }
 
-        @Override public Output execute(Map<String, Object> config, Map<String, Object> input) {
+        @Override public Output execute(Map<String, Object> config, Map<String, Object> input, Instant deadline) {
             Object value = input.get(config.get("field"));
             boolean matched = switch ((String) config.get("operator")) {
                 case "IS_EMPTY" -> value == null || (value instanceof String text && text.isBlank());
@@ -119,7 +124,7 @@ public class NodeRegistry {
             }
         }
 
-        @Override public Output execute(Map<String, Object> config, Map<String, Object> input) {
+        @Override public Output execute(Map<String, Object> config, Map<String, Object> input, Instant deadline) {
             var result = new LinkedHashMap<>(input);
             var values = (Map<?, ?>) config.get("values");
             values.forEach((key, value) -> result.put((String) key, value));
@@ -148,7 +153,7 @@ public class NodeRegistry {
             return key instanceof String text && !text.isBlank() && text.length() <= 100;
         }
 
-        @Override public Output execute(Map<String, Object> config, Map<String, Object> input) {
+        @Override public Output execute(Map<String, Object> config, Map<String, Object> input, Instant deadline) {
             var result = new LinkedHashMap<String, Object>();
             ((Map<?, ?>) config.get("mapping")).forEach((target, source) -> {
                 if (input.containsKey(source)) result.put((String) target, input.get(source));
@@ -170,7 +175,7 @@ public class NodeRegistry {
             }
         }
 
-        @Override public Output execute(Map<String, Object> config, Map<String, Object> input) {
+        @Override public Output execute(Map<String, Object> config, Map<String, Object> input, Instant deadline) {
             return new Output(input, (String) config.get("message"));
         }
     }

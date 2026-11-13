@@ -3,6 +3,7 @@ import { isTrigger } from '../model'
 import type { CanvasEdge, CanvasNode, Graph, JsonObject, NodeConfig, NodeKind, OutputPort } from '../model'
 
 const conditionPorts = ['true', 'false'] as const
+export const httpMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const
 
 export function outputPorts(kind: NodeKind): readonly OutputPort[] {
   return kind === 'CONDITION' ? conditionPorts : ['out']
@@ -45,6 +46,7 @@ export function initialConfig(type: NodeKind): NodeConfig {
     case 'WEBHOOK_TRIGGER': return {}
     case 'SET_DATA': return { values: {} }
     case 'TRANSFORM_DATA': return { mapping: {} }
+    case 'HTTP_REQUEST': return { url: '', method: 'POST' }
     case 'LOG': return { message: 'Workflow completed.' }
     case 'CONDITION': return { field: '', operator: 'IS_EMPTY' }
   }
@@ -70,6 +72,16 @@ export function parseValues(text: string): JsonObject {
 }
 
 export function configProblem(kind: NodeKind, config: NodeConfig): string | undefined {
+  if (kind === 'HTTP_REQUEST') {
+    if (!httpMethods.some(method => method === config.method)) return 'Select an HTTP method.'
+    const value = config.url
+    const authority = typeof value === 'string' && value.length <= 2048 && !/[\s\\#]/.test(value)
+      ? /^https:\/\/([^/?]+)(?:[/?]|$)/i.exec(value)?.[1] : undefined
+    const hostname = authority?.replace(/:443$/, '').toLowerCase()
+    if (!hostname || !/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,62}$/.test(hostname)) {
+      return 'Enter an HTTPS URL with a DNS hostname and the default HTTPS port.'
+    }
+  }
   if (kind === 'TRANSFORM_DATA') {
     const { mapping } = config
     if (!mapping || typeof mapping !== 'object' || Array.isArray(mapping)

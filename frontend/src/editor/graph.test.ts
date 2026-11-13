@@ -43,6 +43,14 @@ describe('graph serialization', () => {
 })
 
 describe('node configuration', () => {
+  it('validates HTTP methods and HTTPS destinations', () => {
+    expect(configProblem('HTTP_REQUEST', { method: 'POST', url: 'https://api.example.com:443/items?limit=5' })).toBeUndefined()
+    expect(configProblem('HTTP_REQUEST', { method: 'CONNECT', url: 'https://api.example.com/' })).toContain('method')
+    for (const url of ['http://api.example.com', 'https://127.0.0.1', 'https://user@api.example.com',
+      'https://api.example.com:8443', 'https://api.example.com:', 'https://api.example.com/#fragment']) {
+      expect(configProblem('HTTP_REQUEST', { method: 'GET', url })).toContain('HTTPS URL')
+    }
+  })
   it('preserves nested JSON and rejects non-objects or malformed JSON', () => {
     expect(parseValues('{"list":[null,3],"ok":true}')).toEqual({ list: [null, 3], ok: true })
     expect(() => parseValues('[]')).toThrow('JSON object')

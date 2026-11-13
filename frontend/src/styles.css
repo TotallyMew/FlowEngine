@@ -122,6 +122,7 @@ small { font-size: 11px; }
 .data { --node-color: #79ddce; --node-bg: #183e3d; }
 .log { --node-color: #f1bc82; --node-bg: #443024; }
 .condition { --node-color: #c9a4fa; --node-bg: #3a2a53; }
+.http { --node-color: #7dccfa; --node-bg: #233d54; }
 .node-glyph { display: grid; place-items: center; flex-shrink: 0; width: 30px; height: 30px; border-radius: 6px; background: var(--node-bg); color: var(--node-color); }
 .editor-canvas { position: relative; min-width: 0; min-height: 0; background: #10151e; }
 .canvas-meta { position: absolute; z-index: 4; top: 10px; left: 12px; display: flex; gap: 9px; align-items: center; pointer-events: none; font-size: 11px; color: var(--muted); }
