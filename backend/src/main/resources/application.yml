@@ -1,0 +1,54 @@
+server:
+  address: ${FLOW_BIND_ADDRESS:127.0.0.1}
+  port: ${FLOW_PORT:8080}
+  servlet:
+    session:
+      timeout: 30m
+      tracking-modes: cookie
+      cookie:
+        name: FLOWSESSION
+        http-only: true
+        secure: ${FLOW_SECURE_COOKIE:false}
+        same-site: lax
+  tomcat:
+    max-http-form-post-size: 128KB
+    max-swallow-size: 128KB
+
+spring:
+  application:
+    name: flowengine
+  datasource:
+    url: ${FLOW_DB_URL:jdbc:postgresql://localhost:5432/flowengine}
+    username: ${FLOW_DB_USER:flowengine}
+    password: ${FLOW_DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  rabbitmq:
+    host: ${FLOW_RABBIT_HOST:localhost}
+    port: ${FLOW_RABBIT_PORT:5672}
+    username: ${FLOW_RABBIT_USER:flowengine}
+    password: ${FLOW_RABBIT_PASSWORD:}
+    connection-timeout: 3s
+    listener:
+      simple:
+        prefetch: 1
+        default-requeue-rejected: false
+  mvc:
+    problemdetails:
+      enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+flow:
+  operator:
+    username: ${FLOW_OPERATOR_USERNAME:operator}
+    password: ${FLOW_OPERATOR_PASSWORD:}

@@ -1,0 +1,69 @@
+name: flowengine
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: flowengine
+      POSTGRES_USER: ${FLOW_DB_USER:-flowengine}
+      POSTGRES_PASSWORD: ${FLOW_DB_PASSWORD:?Set FLOW_DB_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${FLOW_DB_PORT:-55432}:5432"
+    volumes:
+      - postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d flowengine"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  rabbitmq:
+    image: rabbitmq:4.3-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${FLOW_RABBIT_USER:-flowengine}
+      RABBITMQ_DEFAULT_PASS: ${FLOW_RABBIT_PASSWORD:?Set FLOW_RABBIT_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${FLOW_RABBIT_PORT:-5672}:5672"
+      - "127.0.0.1:${FLOW_RABBIT_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: ./backend
+    environment:
+      FLOW_BIND_ADDRESS: 0.0.0.0
+      FLOW_DB_URL: jdbc:postgresql://postgres:5432/flowengine
+      FLOW_DB_USER: ${FLOW_DB_USER:-flowengine}
+      FLOW_DB_PASSWORD: ${FLOW_DB_PASSWORD:?Set FLOW_DB_PASSWORD in .env}
+      FLOW_RABBIT_HOST: rabbitmq
+      FLOW_RABBIT_USER: ${FLOW_RABBIT_USER:-flowengine}
+      FLOW_RABBIT_PASSWORD: ${FLOW_RABBIT_PASSWORD:?Set FLOW_RABBIT_PASSWORD in .env}
+      FLOW_OPERATOR_USERNAME: ${FLOW_OPERATOR_USERNAME:-operator}
+      FLOW_OPERATOR_PASSWORD: ${FLOW_OPERATOR_PASSWORD:?Set FLOW_OPERATOR_PASSWORD in .env}
+      FLOW_SECURE_COOKIE: ${FLOW_SECURE_COOKIE:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "127.0.0.1:${FLOW_WEB_PORT:-5173}:80"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/actuator/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+
+volumes:
+  postgres:
+  rabbitmq:
