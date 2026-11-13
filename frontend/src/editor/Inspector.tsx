@@ -26,6 +26,7 @@ function NodeSettings({ store, node, definition }: { store: Props['store']; node
   const [sourcePort, setSourcePort] = useState<string>(ports[0] ?? 'out')
   const update = store.getState().updateNode
   const httpProblem = data.kind === 'HTTP_REQUEST' && data.config.url ? configProblem(data.kind, data.config) : undefined
+  const githubProblem = data.kind === 'GITHUB_CREATE_ISSUE' ? configProblem(data.kind, data.config) : undefined
   const outgoing = edges.filter(edge => edge.source === id)
   const targets = nodes.filter(other => other.id !== id && !isTrigger(other.data.kind))
 
@@ -66,6 +67,14 @@ function NodeSettings({ store, node, definition }: { store: Props['store']; node
         <small>Use a hostname in the server’s HTTPS allowlist.</small>
       </label>
       {httpProblem && <p className="field-error" role="alert">{httpProblem}</p>}
+    </> : data.kind === 'GITHUB_CREATE_ISSUE' ? <>
+      {definition.fields.map(field => <label key={field.key}>{field.label}
+        <input value={String(data.config[field.key] ?? '')} maxLength={field.key === 'repository' ? 140 : 100}
+          placeholder={field.key === 'repository' ? 'owner/repository' : undefined}
+          onChange={event => update(id, { config: { ...data.config, [field.key]: event.target.value } })} />
+        <small>{field.description}</small>
+      </label>)}
+      {githubProblem && <p className="field-error" role="alert">{githubProblem}</p>}
     </> : definition.fields.map(field => <label key={field.key}>{field.label}
       {field.kind === 'json'
         ? <textarea className="json-input" rows={7} spellCheck={false} aria-invalid={!!problem || text !== undefined}

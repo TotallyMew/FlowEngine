@@ -94,6 +94,12 @@ Connect **Webhook Trigger → Transform Data → HTTP Request**. Set the mapping
 
 The node supports GET, POST, PUT, PATCH, and DELETE. POST, PUT, and PATCH send the node input as JSON. The URL is fixed in the saved workflow. Each call has a ten-second budget and a 64 KiB response body limit.
 
+### Create a GitHub issue
+
+Set `FLOW_GITHUB_REPOSITORY` to an issue-enabled repository in `owner/repository` format. Set `FLOW_GITHUB_TOKEN` to a fine-grained token scoped to that repository with **Issues: write**. With Compose, put these values in your local `.env` and run `docker compose up -d` to apply them. Keep the token in server configuration. [GitHub Create an issue API](https://docs.github.com/en/rest/issues/issues#create-an-issue)
+
+To try the connector, create **Manual Trigger → GitHub · Create issue**. Set **Repository** to the configured repository, **Title field** to `title`, and **Description field** to `body`. Save and run it against a test repository with `{"title":"Check missing SKU","body":"Review product BIKE-123."}`. The node returns the issue number, URL, and repository. A **Webhook Trigger → Condition → GitHub · Create issue** workflow can use the same fields to open a review issue only when its condition matches.
+
 ## Verification
 
 Run the backend suite with Docker Desktop active.
@@ -134,6 +140,7 @@ npm.cmd run test:e2e
 | `FLOW_SECURE_COOKIE` | Require HTTPS for the session cookie | `false` for loopback HTTP |
 | `FLOW_WEB_PORT` | Host UI port when using Compose | `5173` |
 | `FLOW_HTTP_ALLOWED_HOSTS` | Comma-separated exact HTTPS destination hostnames | Empty |
+| `FLOW_GITHUB_REPOSITORY` / `FLOW_GITHUB_TOKEN` | Repository and server-side Issues write token for the GitHub connector | Empty |
 | `FLOW_DEV_API` | Vite’s backend proxy target | `http://127.0.0.1:8080` |
 | `FLOW_E2E_URL` | Playwright target | `http://127.0.0.1:5173` |
 

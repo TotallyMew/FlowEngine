@@ -1,5 +1,6 @@
 package dev.flowengine.workflow;
 
+import dev.flowengine.node.GitHubCreateIssueNode;
 import dev.flowengine.node.HttpRequestNode;
 import dev.flowengine.node.NodeRegistry;
 import dev.flowengine.workflow.WorkflowGraph.Edge;
@@ -17,7 +18,9 @@ class GraphValidatorTest {
     GraphValidatorTest() {
         var http = mock(HttpRequestNode.class);
         when(http.definition()).thenCallRealMethod();
-        validator = new GraphValidator(new NodeRegistry(http));
+        var github = mock(GitHubCreateIssueNode.class);
+        when(github.definition()).thenCallRealMethod();
+        validator = new GraphValidator(new NodeRegistry(http, github));
     }
 
     @Test

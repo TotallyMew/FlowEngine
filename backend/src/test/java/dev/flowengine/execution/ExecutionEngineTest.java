@@ -1,5 +1,6 @@
 package dev.flowengine.execution;
 
+import dev.flowengine.node.GitHubCreateIssueNode;
 import dev.flowengine.node.HttpRequestNode;
 import dev.flowengine.node.NodeRegistry;
 import dev.flowengine.workflow.GraphValidator;
@@ -133,7 +134,9 @@ class ExecutionEngineTest {
     private NodeRegistry registry() {
         var http = mock(HttpRequestNode.class);
         when(http.definition()).thenCallRealMethod();
-        return new NodeRegistry(http);
+        var github = mock(GitHubCreateIssueNode.class);
+        when(github.definition()).thenCallRealMethod();
+        return new NodeRegistry(http, github);
     }
 
     private WorkflowGraph simpleGraph() {

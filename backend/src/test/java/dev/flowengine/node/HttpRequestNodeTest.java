@@ -14,24 +14,25 @@ import tools.jackson.databind.ObjectMapper;
 import static org.assertj.core.api.Assertions.*;
 
 class HttpRequestNodeTest {
-    private final HttpRequestNode node = new HttpRequestNode(new ObjectMapper(), "httpbingo.org");
+    private final WorkflowHttpClient http = new WorkflowHttpClient(new ObjectMapper());
+    private final HttpRequestNode node = new HttpRequestNode(http, "httpbingo.org");
 
     @AfterEach
     void close() throws Exception {
-        node.close();
+        http.close();
     }
 
     @Test
     void readsJsonTextAndEmptyResponses() throws Exception {
         var response = new BasicClassicHttpResponse(201);
         response.setEntity(new StringEntity("{\"sku\":\"BIKE-123\"}", ContentType.APPLICATION_JSON));
-        assertThat(node.readResponse(response).data()).isEqualTo(Map.of("status", 201, "body", Map.of("sku", "BIKE-123")));
+        assertThat(http.readResponse(response)).isEqualTo(new WorkflowHttpClient.Response(201, Map.of("sku", "BIKE-123")));
 
         response.setEntity(new StringEntity("Sveiki", ContentType.TEXT_PLAIN));
-        assertThat(node.readResponse(response).data()).isEqualTo(Map.of("status", 201, "body", "Sveiki"));
+        assertThat(http.readResponse(response)).isEqualTo(new WorkflowHttpClient.Response(201, "Sveiki"));
 
         var empty = new BasicClassicHttpResponse(204);
-        assertThat(node.readResponse(empty).data()).containsEntry("status", 204).containsEntry("body", null);
+        assertThat(http.readResponse(empty)).isEqualTo(new WorkflowHttpClient.Response(204, null));
     }
 
     @Test
@@ -39,17 +40,17 @@ class HttpRequestNodeTest {
         var response = new BasicClassicHttpResponse(200);
         var bytes = new ByteArrayInputStream(new byte[64 * 1024 + 2]);
         response.setEntity(new InputStreamEntity(bytes, -1, ContentType.TEXT_PLAIN));
-        assertThatThrownBy(() -> node.readResponse(response)).hasMessageContaining("64 KiB");
+        assertThatThrownBy(() -> http.readResponse(response)).hasMessageContaining("64 KiB");
         assertThat(bytes.available()).isEqualTo(1);
 
         response.setEntity(new StringEntity("{\"key\":1} {\"extra\":2}", ContentType.APPLICATION_JSON));
-        assertThatThrownBy(() -> node.readResponse(response)).hasMessageContaining("invalid JSON");
+        assertThatThrownBy(() -> http.readResponse(response)).hasMessageContaining("invalid JSON");
         response.setEntity(new StringEntity("{\"key\":\"\\u0000\"}", ContentType.APPLICATION_JSON));
-        assertThatThrownBy(() -> node.readResponse(response)).hasMessageContaining("unsupported text");
+        assertThatThrownBy(() -> http.readResponse(response)).hasMessageContaining("unsupported text");
 
         var redirect = new BasicClassicHttpResponse(302);
         redirect.setHeader("Location", "http://169.254.169.254/");
-        assertThatThrownBy(() -> node.readResponse(redirect)).hasMessage("HTTP endpoint returned status 302.");
+        assertThatThrownBy(() -> http.readResponse(redirect)).hasMessage("HTTP endpoint returned status 302.");
     }
 
     @Test

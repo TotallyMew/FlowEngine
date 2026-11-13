@@ -2,7 +2,7 @@ import {
   Background, Controls, Handle, MiniMap, Position, ReactFlow, useReactFlow,
 } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
-import { Check, Code2, GitFork, Globe, Minus, Plus, Shuffle, SquareTerminal, Webhook, X, Zap } from 'lucide-react'
+import { Check, CircleDot, Code2, GitFork, Globe, Minus, Plus, Shuffle, SquareTerminal, Webhook, X, Zap } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useStore } from 'zustand'
 import { isTrigger } from '../model'
@@ -16,6 +16,7 @@ export const nodePresentation = {
   SET_DATA: { icon: Code2, color: 'data', category: 'Data' },
   TRANSFORM_DATA: { icon: Shuffle, color: 'data', category: 'Data' },
   HTTP_REQUEST: { icon: Globe, color: 'http', category: 'Action' },
+  GITHUB_CREATE_ISSUE: { icon: CircleDot, color: 'http', category: 'GitHub' },
   LOG: { icon: SquareTerminal, color: 'log', category: 'Utility' },
   CONDITION: { icon: GitFork, color: 'condition', category: 'Logic' },
 }

@@ -51,6 +51,9 @@ management:
 flow:
   http:
     allowed-hosts: ${FLOW_HTTP_ALLOWED_HOSTS:}
+  github:
+    repository: ${FLOW_GITHUB_REPOSITORY:}
+    token: ${FLOW_GITHUB_TOKEN:}
   operator:
     username: ${FLOW_OPERATOR_USERNAME:operator}
     password: ${FLOW_OPERATOR_PASSWORD:}
