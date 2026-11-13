@@ -71,6 +71,21 @@ Connect **Manual Trigger** to **Condition**. Set **Field name** to `sku` and cho
 
 Add **Transform Data** after **Manual Trigger** or the ready branch above. Enter `{"productCode":"sku","priceEur":"price"}` in **Field mapping**. Run with `{"sku":"BIKE-123","price":1299,"busena":"paruošta"}` and inspect the node’s **Output** for `{"productCode":"BIKE-123","priceEur":1299}`. Mapping uses exact top-level keys, preserves JSON values including null, and omits missing keys.
 
+### Start a workflow from HTTP
+
+Use a **Webhook Trigger** in place of the Manual Trigger and save the workflow. Open **Webhook** in the toolbar, select **Enable webhook**, and copy the URL and bearer token. The token is shown when it is issued. For a local test, run this from PowerShell with the URL and token shown by your instance.
+
+```powershell
+$url = '<webhook URL>'
+$token = '<bearer token>'
+Invoke-RestMethod -Method Post -Uri $url `
+  -Headers @{ Authorization = "Bearer $token" } `
+  -ContentType 'application/json' `
+  -Body '{"sku":"BIKE-123","price":1299}'
+```
+
+The endpoint returns HTTP `202` with an `executionId`. Open **Executions** to view the run. Enabling the webhook binds it to the saved revision. Saving a new revision requires enabling the webhook again and supplying the new token to the caller. The toolbar also offers token rotation and disabling.
+
 ## Verification
 
 Run the backend suite with Docker Desktop active.

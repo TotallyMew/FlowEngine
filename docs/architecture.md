@@ -14,7 +14,7 @@ flowchart LR
 
 ## Graph and execution
 
-A graph stores node IDs, types, labels, positions and configurations, and directed edges. The server supplies node definitions with port capabilities and field metadata. One Manual Trigger starts a runnable workflow. Every other node must have one parent and be reachable from the trigger. Fan-out is supported. Cycles and merges are rejected. A draft can contain disconnected components while it is being assembled. Draft writes use a revision precondition and JPA optimistic locking to protect concurrent edits.
+A graph stores node IDs, types, labels, positions and configurations, and directed edges. The server supplies node definitions with port capabilities and field metadata. Each runnable workflow has exactly one Manual Trigger or Webhook Trigger. Every other node must have one parent and be reachable from the trigger. Fan-out is supported. Cycles and merges are rejected. A draft can contain disconnected components while it is being assembled. Draft writes use a revision precondition and JPA optimistic locking to protect concurrent edits.
 
 Connections use an optional `sourcePort` that defaults to `out` for existing graphs. The Condition node checks an exact top-level JSON key. **Is empty** matches a missing key, JSON null, or a blank string. **Equals text** compares strings exactly. The original input flows through the selected `true` or `false` output. Nodes on the other branch and their descendants are marked skipped. If the selected output has no connection, that branch ends at the Condition node.
 
@@ -36,6 +36,8 @@ The delivery model permits repeated dispatch and guards against repeated claims 
 The first iteration uses one environment-provisioned operator with a BCrypt password hash and a Spring Security session. Browser writes use a CSRF token. The API checks ownership on workflows and on their associated execution history. API payloads are capped at 128 KiB, with up to 50 nodes per workflow. Swagger requires a session. The loopback configuration is intended for local development. Shared or hosted deployments will need account management, TLS and secure cookies, authentication rate limiting, and a backup and retention policy.
 
 Workflow snapshots and results are stored in PostgreSQL JSONB. They can include user-supplied data, so use sample payloads and keep credentials out of node fields. Log messages stay in run history. Deleting a workflow deletes its executions through the database foreign key. Existing Docker volumes keep their initialized database and broker credentials across restarts.
+
+Only the workflow owner can enable, rotate, or disable its webhook. Registration validates the current revision and issues a 256-bit random bearer token. PostgreSQL stores the token’s SHA-256 hash and the registered revision. `POST /api/webhooks/{id}` accepts a JSON object up to 128 KiB and enqueues an execution after validating the token and revision. The bearer token authenticates this POST independently of the session. Management calls still require a session and CSRF protection for writes. The authenticated delivery limit is 30 accepted requests per workflow per fixed one-minute window, enforced atomically in PostgreSQL. Invalid tokens and stale registrations return 404, and accepted calls return 202 with an execution ID. Use HTTPS to carry tokens outside loopback.
 
 ## Stack compatibility
 

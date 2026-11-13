@@ -31,8 +31,12 @@ public class NodeRegistry {
         Output execute(Map<String, Object> config, Map<String, Object> input);
     }
 
-    private static final String MANUAL = "MANUAL_TRIGGER";
-    private final List<NodeType> types = List.of(new ManualTrigger(), new Condition(), new SetData(), new TransformData(), new Log());
+    public static final String MANUAL_TRIGGER = "MANUAL_TRIGGER";
+    public static final String WEBHOOK_TRIGGER = "WEBHOOK_TRIGGER";
+    private final List<NodeType> types = List.of(
+            new Trigger(MANUAL_TRIGGER, "Manual Trigger", "Start a workflow with optional JSON input."),
+            new Trigger(WEBHOOK_TRIGGER, "Webhook Trigger", "Start a workflow from an authenticated HTTP request."),
+            new Condition(), new SetData(), new TransformData(), new Log());
 
     public List<Definition> definitions() {
         return types.stream().map(NodeType::definition).toList();
@@ -55,14 +59,13 @@ public class NodeRegistry {
                 .orElseThrow(() -> new GraphException("Unsupported node type: " + type));
     }
 
-    private static final class ManualTrigger implements NodeType {
+    private record Trigger(String type, String label, String description) implements NodeType {
         @Override public Definition definition() {
-            return new Definition(MANUAL, "Manual Trigger", "Start a workflow with optional JSON input.",
-                    false, List.of("out"), List.of());
+            return new Definition(type, label, description, false, List.of("out"), List.of());
         }
 
         @Override public void validate(Map<String, Object> config) {
-            if (!config.isEmpty()) throw new GraphException("Manual Trigger has no configuration fields.");
+            if (!config.isEmpty()) throw new GraphException(label + " has no configuration fields.");
         }
 
         @Override public Output execute(Map<String, Object> config, Map<String, Object> input) {

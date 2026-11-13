@@ -11,6 +11,8 @@ export class ApiError extends Error {
 
 type Csrf = { headerName: string; token: string }
 export type Session = { username: string }
+export type WebhookStatus = { path: string; revision: number | null }
+export type WebhookRegistration = { path: string; revision: number; token: string }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(path, { ...init, credentials: 'same-origin' })
@@ -50,6 +52,9 @@ export const api = {
   duplicate: (id: string) => write<Draft>('POST', `${workflows}/${id}/duplicate`),
   remove: (id: string) => write<void>('DELETE', `${workflows}/${id}`),
   run: (id: string, revision: number, input: JsonObject) => write<Run>('POST', runPath(id), { revision, input }),
+  webhook: (id: string) => request<WebhookStatus>(`${workflows}/${id}/webhook`),
+  registerWebhook: (id: string, revision: number) => write<WebhookRegistration>('PUT', `${workflows}/${id}/webhook`, { revision }),
+  revokeWebhook: (id: string) => write<void>('DELETE', `${workflows}/${id}/webhook`),
   history: (id: string, page: number) => request<RunSummary[]>(`${runPath(id)}?page=${page}`),
   result: (id: string, runId: string) => request<Run>(`${runPath(id)}/${runId}`),
 }

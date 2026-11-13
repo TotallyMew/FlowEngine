@@ -12,6 +12,7 @@ import { ExecutionPanel } from './ExecutionPanel'
 import { configProblem, serializeGraph } from './graph'
 import { Inspector } from './Inspector'
 import { RunInputDialog } from './RunInputDialog'
+import { WebhookDialog } from './WebhookDialog'
 import { createEditor, isDirty } from './store'
 
 type Props = {
@@ -28,6 +29,8 @@ export function Editor({ draft, definitions, onDirty, selectWorkflow, sessionExp
   const name = useStore(store, state => state.name)
   const revision = useStore(store, state => state.revision)
   const dirty = useStore(store, isDirty)
+  const hasWebhook = useStore(store, state => state.nodes.some(node => node.data.kind === 'WEBHOOK_TRIGGER'))
+  const [webhookOpen, setWebhookOpen] = useState(false)
   const [showRuns, setShowRuns] = useState(false)
   const [runId, setRunId] = useState<string | null>(null)
   const [resultNode, setResultNode] = useState<string | null>(null)
@@ -121,7 +124,7 @@ export function Editor({ draft, definitions, onDirty, selectWorkflow, sessionExp
   const busy = save.isPending || execute.isPending || duplicate.isPending || remove.isPending || reload.isPending
 
   const submitSave = () => {
-    if (busy || runId || runInputOpen || !isDirty(store.getState())) return
+    if (busy || runId || runInputOpen || webhookOpen || !isDirty(store.getState())) return
     clearErrors()
     const state = store.getState()
     const invalid = state.nodes.find(node => !node.data.label.trim() || state.configText[node.id] !== undefined
@@ -160,9 +163,11 @@ export function Editor({ draft, definitions, onDirty, selectWorkflow, sessionExp
       </div>
       {!runId && <div className="toolbar-actions">
         <button className="button" title="Save (Ctrl+S)" disabled={busy || !dirty || !!runId} onClick={submitSave}><Save size={15} /> {save.isPending ? 'Saving…' : 'Save'}</button>
-        <RunInputDialog open={runInputOpen} onOpenChange={open => { clearErrors(); setRunInputOpen(open) }}
+        {hasWebhook ? <WebhookDialog workflowId={draft.id} revision={revision} dirty={dirty} disabled={busy}
+          open={webhookOpen} onOpenChange={setWebhookOpen} sessionExpired={sessionExpired} />
+        : <RunInputDialog open={runInputOpen} onOpenChange={open => { clearErrors(); setRunInputOpen(open) }}
           pending={execute.isPending} error={execute.error} disabled={busy || dirty} dirty={dirty}
-          onRun={input => execute.mutate(input)} />
+          onRun={input => execute.mutate(input)} />}
         <DropdownMenu.Root>
           <DropdownMenu.Trigger asChild><button className="icon-button menu-trigger" aria-label="Workflow actions" disabled={busy || !!runId}><Ellipsis size={18} /></button></DropdownMenu.Trigger>
           <DropdownMenu.Portal><DropdownMenu.Content className="menu" align="end" sideOffset={6}>
@@ -184,7 +189,8 @@ export function Editor({ draft, definitions, onDirty, selectWorkflow, sessionExp
       {!runId && <Inspector key={draftLoad} store={store} definitions={definitions} />}
     </div>
     <ExecutionPanel workflowId={draft.id} runId={runId} selectedNode={resultNode} run={run.data} runError={run.error}
-      retry={() => void run.refetch()} selectRun={openRun} selectNode={setResultNode} open={showRuns} toggle={() => setShowRuns(!showRuns)} />
+      retry={() => void run.refetch()} selectRun={openRun} selectNode={setResultNode} open={showRuns}
+      watchForExternalRuns={hasWebhook} toggle={() => setShowRuns(!showRuns)} />
     <AlertDialog.Root open={deleteOpen} onOpenChange={open => { if (!remove.isPending) setDeleteOpen(open) }}>
       <AlertDialog.Portal>
         <AlertDialog.Overlay className="overlay" />

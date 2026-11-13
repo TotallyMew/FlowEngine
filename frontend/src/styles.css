@@ -221,6 +221,7 @@ pre { background: #101620; margin: 0; padding: 7px; overflow: auto; max-height: 
 .dialog h2 { font-size: 17px; font-weight: 650; }
 .dialog p { color: var(--muted); margin: 6px 0 11px; font-size: 12px; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.webhook-details input { width: 100%; }
 .menu { padding: 4px; min-width: 170px; }
 .menu-item { display: flex; gap: 8px; align-items: center; font-size: 12px; padding: 7px; border-radius: 4px; outline: none; cursor: pointer; }
 .menu-item[data-highlighted] { background: #2b3b58; }

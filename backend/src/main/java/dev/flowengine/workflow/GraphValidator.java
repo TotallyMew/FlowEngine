@@ -41,7 +41,7 @@ public class GraphValidator {
             }
         }
         if (triggers > 1 || (runnable && triggers != 1)) {
-            throw new GraphException("A workflow must have exactly one Manual Trigger to run.");
+            throw new GraphException("A workflow must have exactly one trigger to run.");
         }
 
         var edgeIds = new HashSet<String>();
@@ -69,7 +69,7 @@ public class GraphValidator {
             if (!incoming.containsKey(node.id())) ready.addLast(node.id());
         }
         if (runnable && ready.size() != 1) {
-            throw new GraphException("Connect all nodes to the Manual Trigger before running.");
+            throw new GraphException("Connect all nodes to the trigger before running.");
         }
         var order = new ArrayList<Node>();
         while (!ready.isEmpty()) {

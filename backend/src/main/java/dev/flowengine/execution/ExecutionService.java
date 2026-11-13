@@ -1,5 +1,6 @@
 package dev.flowengine.execution;
 
+import dev.flowengine.node.NodeRegistry;
 import dev.flowengine.workflow.WorkflowGraph;
 import dev.flowengine.workflow.WorkflowService;
 import java.time.Instant;
@@ -11,6 +12,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -41,7 +43,12 @@ public class ExecutionService {
 
     @Transactional
     public Detail request(UUID workflowId, String owner, long revision, Map<String, Object> input) {
-        var snapshot = workflows.snapshot(workflowId, owner, revision);
+        var snapshot = workflows.snapshot(workflowId, owner, revision, NodeRegistry.MANUAL_TRIGGER);
+        return enqueue(snapshot, input);
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Detail enqueue(WorkflowService.Draft snapshot, Map<String, Object> input) {
         return executions.save(new Execution(snapshot, input)).detail();
     }
 

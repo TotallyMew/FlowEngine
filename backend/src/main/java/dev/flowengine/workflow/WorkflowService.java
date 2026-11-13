@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -69,14 +70,23 @@ public class WorkflowService {
         repository.delete(owned(id, owner));
     }
 
-    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
-    public Draft snapshot(UUID id, String owner, long revision) {
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Draft snapshot(UUID id, String owner, long revision, String triggerType) {
         var draft = repository.findForRun(id, owner).orElseThrow(WorkflowService::missing).draft();
         if (draft.revision() != revision) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This workflow changed. Reload it before running.");
         }
-        validator.validate(draft.graph(), true);
+        var plan = validator.validate(draft.graph(), true);
+        if (!plan.order().getFirst().type().equals(triggerType)) {
+            throw new GraphException("The workflow's trigger does not support this run method.");
+        }
         return draft;
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Draft webhookSnapshot(UUID id, long revision) {
+        return repository.findWebhookRevision(id, revision).map(Workflow::draft)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Webhook unavailable."));
     }
 
     private Workflow owned(UUID id, String owner) {

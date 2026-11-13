@@ -3,8 +3,10 @@ import type { Edge, Node } from '@xyflow/react'
 export type Json = null | boolean | number | string | Json[] | JsonObject
 export type JsonObject = { [key: string]: Json }
 
-export type NodeKind = 'MANUAL_TRIGGER' | 'SET_DATA' | 'LOG' | 'CONDITION' | 'TRANSFORM_DATA'
+export type NodeKind = 'MANUAL_TRIGGER' | 'WEBHOOK_TRIGGER' | 'SET_DATA' | 'LOG' | 'CONDITION' | 'TRANSFORM_DATA'
 export type OutputPort = 'out' | 'true' | 'false'
+
+export const isTrigger = (kind: NodeKind) => kind === 'MANUAL_TRIGGER' || kind === 'WEBHOOK_TRIGGER'
 export type Position = { x: number; y: number }
 export type NodeConfig = Record<string, Json>
 
