@@ -5,6 +5,7 @@ import dev.flowengine.workflow.WorkflowService.Draft;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -18,6 +19,7 @@ class Execution {
     private UUID workflowId;
     private long workflowRevision;
     @JdbcTypeCode(SqlTypes.JSON) private WorkflowGraph graph;
+    @JdbcTypeCode(SqlTypes.JSON) private Map<String, Object> input;
     @Enumerated(EnumType.STRING) private Status status;
     private Instant requestedAt;
     private Instant startedAt;
@@ -29,11 +31,12 @@ class Execution {
 
     protected Execution() {}
 
-    Execution(Draft draft) {
+    Execution(Draft draft, Map<String, Object> input) {
         id = UUID.randomUUID();
         workflowId = draft.id();
         workflowRevision = draft.revision();
         graph = draft.graph();
+        this.input = input;
         status = Status.PENDING;
         requestedAt = Instant.now();
         nextDispatchAt = requestedAt;
@@ -50,10 +53,10 @@ class Execution {
 
     ExecutionService.Detail detail() {
         return new ExecutionService.Detail(id, workflowId, workflowRevision, graph, status.name(), requestedAt,
-                startedAt, finishedAt, results, error);
+                startedAt, finishedAt, input, results, error);
     }
 
     ExecutionService.Claim claim() {
-        return new ExecutionService.Claim(graph, deadlineAt);
+        return new ExecutionService.Claim(graph, input, deadlineAt);
     }
 }

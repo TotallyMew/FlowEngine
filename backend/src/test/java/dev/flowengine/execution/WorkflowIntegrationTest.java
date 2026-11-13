@@ -1,6 +1,7 @@
 package dev.flowengine.execution;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -85,6 +86,8 @@ class WorkflowIntegrationTest {
         await().atMost(15, SECONDS).untilAsserted(() -> mvc.perform(get(executions + "/" + id).with(user("alice")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("COMPLETED"))
                 .andExpect(jsonPath("$.workflowRevision").value(revision))
+                .andExpect(jsonPath("$.input").isEmpty())
+                .andExpect(jsonPath("$.results[0].output").isEmpty())
                 .andExpect(jsonPath("$.results[2].input.project").value("flowengine"))
                 .andExpect(jsonPath("$.results[2].output.project").value("flowengine"))
                 .andExpect(jsonPath("$.results[2].message").value("workflow verified"))
@@ -99,12 +102,41 @@ class WorkflowIntegrationTest {
     }
 
     @Test
+    void runsTheSameRevisionWithDifferentInputsAndRetainsEachPayload() throws Exception {
+        String workflow = create("Per-run inputs");
+        long revision = save(workflow, 0);
+        String executions = workflow + "/executions";
+
+        mvc.perform(post(executions).with(user("alice")).with(csrf()).contentType("application/json")
+                .content("{\"revision\":" + revision + ",\"input\":[]}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post(executions).with(user("alice")).with(csrf()).contentType("application/json")
+                .content("{\"revision\":" + revision + ",\"input\":{\"sku\":\"" + "x".repeat(128 * 1024) + "\"}}"))
+                .andExpect(status().isContentTooLarge());
+        mvc.perform(get(executions).with(user("alice"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+
+        String first = queueWithSku(executions, revision, "BIKE-123");
+        String second = queueWithSku(executions, revision, "BIKE-456");
+        assertThat(first).isNotEqualTo(second);
+
+        await().atMost(15, SECONDS).untilAsserted(() -> {
+            assertRunInput(executions + "/" + second, revision, "BIKE-456");
+            assertRunInput(executions + "/" + first, revision, "BIKE-123");
+        });
+        mvc.perform(get(workflow).with(user("alice"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.revision").value(revision))
+                .andExpect(jsonPath("$.graph.nodes[0].config").isEmpty());
+        mvc.perform(get(executions + "/" + first).with(user("other"))).andExpect(status().isNotFound());
+    }
+
+    @Test
     void failsAnAbandonedClaimWithoutMakingItRunnableAgain() throws Exception {
         String workflow = create("Recovery");
         long revision = save(workflow, 0);
         var workflowId = UUID.fromString(workflow.substring(workflow.lastIndexOf('/') + 1));
         UUID id = transaction.execute(status -> {
-            UUID runId = runs.request(workflowId, "alice", revision).id();
+            UUID runId = runs.request(workflowId, "alice", revision, Map.of()).id();
             assertThat(runs.claim(runId)).isPresent();
             // Commit an abandoned claim without exposing the pending row to the dispatcher.
             jdbc.sql("""
@@ -157,6 +189,29 @@ class WorkflowIntegrationTest {
         var created = mvc.perform(post(WORKFLOWS).with(user("alice")).with(csrf()).contentType("application/json")
                 .content("{\"name\":\"" + name + "\"}")).andExpect(status().isCreated()).andReturn();
         return WORKFLOWS + "/" + body(created.getResponse().getContentAsString()).path("id").asText();
+    }
+
+    private String queueWithSku(String executions, long revision, String sku) throws Exception {
+        var payload = json.writeValueAsString(Map.of("revision", revision,
+                "input", Map.of("sku", sku, "metadata", Map.of("tags", java.util.Arrays.asList("new", null)))));
+        var queued = mvc.perform(post(executions).with(user("alice")).with(csrf())
+                .contentType("application/json").content(payload)).andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.input.sku").value(sku)).andReturn();
+        return body(queued.getResponse().getContentAsString()).path("id").asText();
+    }
+
+    private void assertRunInput(String execution, long revision, String sku) throws Exception {
+        var result = mvc.perform(get(execution).with(user("alice")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.workflowRevision").value(revision))
+                .andExpect(jsonPath("$.input.sku").value(sku))
+                .andExpect(jsonPath("$.results[0].input.sku").value(sku))
+                .andExpect(jsonPath("$.results[0].output.sku").value(sku))
+                .andExpect(jsonPath("$.results[2].output.sku").value(sku))
+                .andExpect(jsonPath("$.results[2].output.project").value("flowengine"))
+                .andReturn();
+        assertThat(body(result.getResponse().getContentAsString())
+                .at("/results/2/output/metadata/tags/1").isNull()).isTrue();
     }
 
     private long save(String workflow, long revision) throws Exception {

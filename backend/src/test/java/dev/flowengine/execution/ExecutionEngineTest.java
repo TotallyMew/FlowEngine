@@ -36,19 +36,22 @@ class ExecutionEngineTest {
                 List.of(new Edge("e1", "start", "first"), new Edge("e2", "first", "second"),
                         new Edge("e3", "first", "sibling")));
 
-        var outcome = engine.run(graph, now.plusSeconds(30));
+        Map<String, Object> input = Map.of("sku", "BIKE-123", "count", 0);
+        var outcome = engine.run(graph, input, now.plusSeconds(30));
 
         assertThat(outcome.error()).isNull();
         assertThat(outcome.results()).extracting(ExecutionEngine.NodeResult::status).containsOnly(COMPLETED);
+        assertThat(outcome.results().getFirst().input()).isEqualTo(input);
+        assertThat(outcome.results().getFirst().output()).isEqualTo(input);
         assertThat(outcome.results().get(2).output()).containsEntry("count", 2).containsEntry("missing", null).containsEntry("keep", true);
-        assertThat(outcome.results().get(3).output()).isEqualTo(Map.of("count", 1, "keep", true));
+        assertThat(outcome.results().get(3).output()).isEqualTo(Map.of("sku", "BIKE-123", "count", 1, "keep", true));
         assertThat(outcome.results().get(3).message()).isEqualTo("Side branch");
     }
 
     @Test
     void timesOutBeforeExecutingAnyNodeAndSkipsRemainingNodes() {
         var registry = spy(new NodeRegistry());
-        var outcome = new ExecutionEngine(new GraphValidator(registry), registry, clock).run(simpleGraph(), now);
+        var outcome = new ExecutionEngine(new GraphValidator(registry), registry, clock).run(simpleGraph(), Map.of(), now);
 
         assertThat(outcome.error()).isEqualTo("Execution timed out.");
         assertThat(outcome.results()).extracting(ExecutionEngine.NodeResult::status).containsExactly(FAILED, SKIPPED);
@@ -59,7 +62,8 @@ class ExecutionEngineTest {
     void sanitizesUnexpectedNodeFailures() {
         var registry = spy(new NodeRegistry());
         doThrow(new IllegalStateException("internal detail")).when(registry).execute(eq("LOG"), anyMap(), anyMap());
-        var outcome = new ExecutionEngine(new GraphValidator(registry), registry, clock).run(simpleGraph(), now.plusSeconds(30));
+        var outcome = new ExecutionEngine(new GraphValidator(registry), registry, clock)
+                .run(simpleGraph(), Map.of(), now.plusSeconds(30));
 
         assertThat(outcome.results()).extracting(ExecutionEngine.NodeResult::status).containsExactly(COMPLETED, FAILED);
         assertThat(outcome.error()).isEqualTo("Node execution failed.");

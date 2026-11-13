@@ -1,4 +1,4 @@
-import type { Draft, DraftSummary, Graph, NodeDefinition, Run, RunSummary } from './model'
+import type { Draft, DraftSummary, Graph, JsonObject, NodeDefinition, Run, RunSummary } from './model'
 
 export class ApiError extends Error {
   readonly status: number
@@ -49,7 +49,7 @@ export const api = {
     write<Draft>('PUT', `${workflows}/${id}`, { name, graph, revision }),
   duplicate: (id: string) => write<Draft>('POST', `${workflows}/${id}/duplicate`),
   remove: (id: string) => write<void>('DELETE', `${workflows}/${id}`),
-  run: (id: string, revision: number) => write<Run>('POST', runPath(id), { revision }),
+  run: (id: string, revision: number, input: JsonObject) => write<Run>('POST', runPath(id), { revision, input }),
   history: (id: string, page: number) => request<RunSummary[]>(`${runPath(id)}?page=${page}`),
   result: (id: string, runId: string) => request<Run>(`${runPath(id)}/${runId}`),
 }
