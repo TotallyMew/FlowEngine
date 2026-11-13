@@ -47,6 +47,7 @@ export function initialConfig(type: NodeKind): NodeConfig {
     case 'SET_DATA': return { values: {} }
     case 'TRANSFORM_DATA': return { mapping: {} }
     case 'HTTP_REQUEST': return { url: '', method: 'POST' }
+    case 'GITHUB_CREATE_ISSUE': return { repository: '', titleField: 'title', bodyField: '' }
     case 'LOG': return { message: 'Workflow completed.' }
     case 'CONDITION': return { field: '', operator: 'IS_EMPTY' }
   }
@@ -72,6 +73,17 @@ export function parseValues(text: string): JsonObject {
 }
 
 export function configProblem(kind: NodeKind, config: NodeConfig): string | undefined {
+  if (kind === 'GITHUB_CREATE_ISSUE') {
+    const { repository, titleField, bodyField } = config
+    if (typeof repository !== 'string' || !/^[a-z0-9](?:[a-z0-9-]{0,37}[a-z0-9])?\/[a-z0-9_.-]{1,100}$/i.test(repository)
+        || repository.endsWith('/.') || repository.endsWith('/..')) {
+      return 'Enter a GitHub repository in owner/repository format.'
+    }
+    if (typeof titleField !== 'string' || !titleField.trim() || titleField.length > 100
+        || typeof bodyField !== 'string' || bodyField.length > 100 || (bodyField && !bodyField.trim())) {
+      return 'Use a title field and an optional description field of at most 100 characters each.'
+    }
+  }
   if (kind === 'HTTP_REQUEST') {
     if (!httpMethods.some(method => method === config.method)) return 'Select an HTTP method.'
     const value = config.url

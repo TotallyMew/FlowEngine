@@ -36,11 +36,11 @@ public class NodeRegistry {
     public static final String WEBHOOK_TRIGGER = "WEBHOOK_TRIGGER";
     private final List<NodeType> types;
 
-    public NodeRegistry(HttpRequestNode httpRequest) {
+    public NodeRegistry(HttpRequestNode httpRequest, GitHubCreateIssueNode githubCreateIssue) {
         types = List.of(
                 new Trigger(MANUAL_TRIGGER, "Manual Trigger", "Start a workflow with optional JSON input."),
                 new Trigger(WEBHOOK_TRIGGER, "Webhook Trigger", "Start a workflow from an authenticated HTTP request."),
-                new Condition(), new SetData(), new TransformData(), httpRequest, new Log());
+                new Condition(), new SetData(), new TransformData(), httpRequest, githubCreateIssue, new Log());
     }
 
     public List<Definition> definitions() {

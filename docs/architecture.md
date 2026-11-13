@@ -22,6 +22,8 @@ Transform Data builds a new object from an output-key-to-input-key mapping. Keys
 
 HTTP Request uses the saved URL and method. POST, PUT, and PATCH serialize the input object as JSON. Successful calls return an object containing the status and a JSON, UTF-8 text, or null body. Non-2xx responses fail the node and record the status without persisting the error response body. The client skips redirects and automatic retries. A timed-out write may still have reached the destination.
 
+GitHub Create issue maps a required title and optional Markdown description from top-level JSON keys. It posts only those fields to the configured repository and returns the repository, issue number, and URL. The connector uses the same deadline and response limits as HTTP Request. Each accepted run can create a separate issue.
+
 The Manual Trigger passes the run’s input JSON object downstream. The run API accepts it in the optional `input` field and defaults to `{}` when omitted or null. Set Data shallow-merges JSON object keys into its parent’s output. A Log node preserves the input and records a literal message in execution history. A topological plan runs one node at a time. A failed node ends the run and marks the unvisited nodes skipped. The inspector reads the graph and input captured at enqueue time along with the node results, even after the draft is edited. Node records include timestamps, inputs, outputs, messages, and safe failure details. Status and history are fetched by polling.
 
 ## Delivery and recovery
@@ -42,6 +44,8 @@ Workflow snapshots and results are stored in PostgreSQL JSONB. They can include 
 Only the workflow owner can enable, rotate, or disable its webhook. Registration validates the current revision and issues a 256-bit random bearer token. PostgreSQL stores the token’s SHA-256 hash and the registered revision. `POST /api/webhooks/{id}` accepts a JSON object up to 128 KiB and enqueues an execution after validating the token and revision. The bearer token authenticates this POST independently of the session. Management calls still require a session and CSRF protection for writes. The authenticated delivery limit is 30 accepted requests per workflow per fixed one-minute window, enforced atomically in PostgreSQL. Invalid tokens and stale registrations return 404, and accepted calls return 202 with an execution ID. Use HTTPS to carry tokens outside loopback.
 
 Outbound requests require HTTPS on port 443 and an exact match in `FLOW_HTTP_ALLOWED_HOSTS`. The worker validates every DNS answer against its address restrictions, connects to a checked IP, and retains the hostname for TLS verification. Requests use a bounded worker pool and a ten-second deadline capped by the remaining workflow deadline. Request bodies are limited to 128 KiB and uncompressed response bodies to 64 KiB. For hosted deployments, enforce outbound network policy alongside the application controls. [OWASP SSRF prevention](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html)
+
+The GitHub connector fixes its destination to `api.github.com` and restricts issue creation to `FLOW_GITHUB_REPOSITORY`. Its bearer token comes from server configuration, outside the workflow and execution data. Generic HTTP Request keeps its own destination allowlist. [GitHub Create an issue API](https://docs.github.com/en/rest/issues/issues#create-an-issue)
 
 ## Stack compatibility
 
