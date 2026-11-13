@@ -29,6 +29,15 @@ public record WorkflowGraph(
     public record Edge(
             @NotBlank @Pattern(regexp = "[A-Za-z0-9_-]{1,64}") String id,
             @NotBlank String source,
-            @NotBlank String target
-    ) {}
+            @NotBlank String target,
+            String sourcePort
+    ) {
+        public Edge {
+            if (sourcePort == null) sourcePort = "out";
+        }
+
+        public Edge(String id, String source, String target) {
+            this(id, source, target, "out");
+        }
+    }
 }

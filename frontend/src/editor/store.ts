@@ -2,7 +2,7 @@ import { applyEdgeChanges, applyNodeChanges } from '@xyflow/react'
 import type { EdgeChange, NodeChange } from '@xyflow/react'
 import { createStore } from 'zustand'
 import type { CanvasEdge, CanvasNode, Draft, NodeConfig, NodeDefinition, Position } from '../model'
-import { connectionProblem, initialConfig, loadGraph, serializeGraph } from './graph'
+import { canvasEdge, connectionProblem, initialConfig, loadGraph, serializeGraph } from './graph'
 
 type EditorState = {
   name: string
@@ -18,7 +18,7 @@ type EditorState = {
   changeNodes: (changes: NodeChange<CanvasNode>[]) => void
   changeEdges: (changes: EdgeChange<CanvasEdge>[]) => void
   add: (definition: NodeDefinition, position: Position) => void
-  connect: (source: string, target: string) => void
+  connect: (source: string, target: string, sourceHandle?: string) => void
   updateNode: (id: string, data: Partial<{ label: string; config: NodeConfig }>, text?: string) => void
   duplicate: (id: string) => void
   remove: (id: string) => void
@@ -79,12 +79,10 @@ export function createEditor(draft: Draft) {
         }],
       })
     },
-    connect: (source, target) => set(state => {
-      const feedback = connectionProblem({ source, target }, state.nodes, state.edges)
+    connect: (source, target, sourceHandle = 'out') => set(state => {
+      const feedback = connectionProblem({ source, target, sourceHandle }, state.nodes, state.edges)
       if (feedback) return { feedback }
-      return { feedback: null, edges: [...state.edges, {
-        id: crypto.randomUUID(), source, target, type: 'smoothstep', sourceHandle: 'out', targetHandle: 'in',
-      }] }
+      return { feedback: null, edges: [...state.edges, canvasEdge(crypto.randomUUID(), source, target, sourceHandle)] }
     }),
     updateNode: (id, data, text) => set(state => {
       const configText = { ...state.configText }

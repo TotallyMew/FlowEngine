@@ -12,8 +12,18 @@ import org.springframework.stereotype.Component;
 public class NodeRegistry {
     public record Field(String key, String label, String kind, String description) {}
     public record Definition(String type, String label, String description, boolean input, boolean output,
-                             List<Field> fields) {}
-    public record Output(Map<String, Object> data, String message) {}
+                             List<String> outputPorts, List<Field> fields) {
+        Definition(String type, String label, String description, boolean input, List<String> outputPorts,
+                   List<Field> fields) {
+            this(type, label, description, input, !outputPorts.isEmpty(), outputPorts, fields);
+        }
+    }
+
+    public record Output(Map<String, Object> data, String message, String port) {
+        Output(Map<String, Object> data, String message) {
+            this(data, message, "out");
+        }
+    }
 
     private interface NodeType {
         Definition definition();
@@ -22,7 +32,7 @@ public class NodeRegistry {
     }
 
     private static final String MANUAL = "MANUAL_TRIGGER";
-    private final List<NodeType> types = List.of(new ManualTrigger(), new SetData(), new Log());
+    private final List<NodeType> types = List.of(new ManualTrigger(), new Condition(), new SetData(), new Log());
 
     public List<Definition> definitions() {
         return types.stream().map(NodeType::definition).toList();
@@ -47,7 +57,8 @@ public class NodeRegistry {
 
     private static final class ManualTrigger implements NodeType {
         @Override public Definition definition() {
-            return new Definition(MANUAL, "Manual Trigger", "Start a workflow with optional JSON input.", false, true, List.of());
+            return new Definition(MANUAL, "Manual Trigger", "Start a workflow with optional JSON input.",
+                    false, List.of("out"), List.of());
         }
 
         @Override public void validate(Map<String, Object> config) {
@@ -59,9 +70,42 @@ public class NodeRegistry {
         }
     }
 
+    private static final class Condition implements NodeType {
+        private static final Set<String> EMPTY_FIELDS = Set.of("field", "operator");
+        private static final Set<String> EQUALS_FIELDS = Set.of("field", "operator", "value");
+
+        @Override public Definition definition() {
+            return new Definition("CONDITION", "Condition", "Route data based on a JSON field.",
+                    true, List.of("true", "false"), List.of(
+                    new Field("field", "Field name", "text", "A top-level JSON key."),
+                    new Field("operator", "Operator", "select", "The check to apply to the field."),
+                    new Field("value", "Text to match", "text", "Exact match for a string field.")));
+        }
+
+        @Override public void validate(Map<String, Object> config) {
+            if (!(config.get("field") instanceof String field) || field.isBlank() || field.length() > 100) {
+                throw new GraphException("Enter a top-level field name of at most 100 characters.");
+            }
+            if ("IS_EMPTY".equals(config.get("operator")) && config.keySet().equals(EMPTY_FIELDS)) return;
+            if ("EQUALS".equals(config.get("operator")) && config.keySet().equals(EQUALS_FIELDS)
+                    && config.get("value") instanceof String value && value.length() <= 1000) return;
+            throw new GraphException("Select Is empty or provide a text value for Equals.");
+        }
+
+        @Override public Output execute(Map<String, Object> config, Map<String, Object> input) {
+            Object value = input.get(config.get("field"));
+            boolean matched = switch ((String) config.get("operator")) {
+                case "IS_EMPTY" -> value == null || (value instanceof String text && text.isBlank());
+                case "EQUALS" -> config.get("value").equals(value);
+                default -> throw new IllegalStateException("Unknown condition operator.");
+            };
+            return new Output(input, null, Boolean.toString(matched));
+        }
+    }
+
     private static final class SetData implements NodeType {
         @Override public Definition definition() {
-            return new Definition("SET_DATA", "Set Data", "Add or replace JSON fields.", true, true,
+            return new Definition("SET_DATA", "Set Data", "Add or replace JSON fields.", true, List.of("out"),
                     List.of(new Field("values", "Values", "json", "Top-level fields replace matching input fields.")));
         }
 
@@ -82,7 +126,7 @@ public class NodeRegistry {
 
     private static final class Log implements NodeType {
         @Override public Definition definition() {
-            return new Definition("LOG", "Log", "Record a message in the run inspector.", true, true,
+            return new Definition("LOG", "Log", "Record a message in the run inspector.", true, List.of("out"),
                     List.of(new Field("message", "Message", "text", "Recorded with this node’s execution.")));
         }
 

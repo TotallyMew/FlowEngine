@@ -19,7 +19,26 @@ class GraphValidatorTest {
         var plan = validator.validate(graph, true);
 
         assertThat(plan.order()).extracting(Node::id).containsExactly("start", "left", "right");
-        assertThat(plan.parents()).containsEntry("left", "start").containsEntry("right", "start");
+        assertThat(plan.incoming()).containsEntry("left", new Edge("e1", "start", "left"))
+                .containsEntry("right", new Edge("e2", "start", "right"));
+    }
+
+    @Test
+    void validatesNamedOutputPortsAndKeepsLegacyEdges() {
+        var condition = new Node("check", "CONDITION", "Check SKU", new Position(100, 0),
+                Map.of("field", "sku", "operator", "IS_EMPTY"));
+        var nodes = List.of(trigger(), condition, log("review"), log("ready"));
+        var legacy = new Edge("e1", "start", "check", null);
+        var matched = new Edge("e2", "check", "review", "true");
+        var unmatched = new Edge("e3", "check", "ready", "false");
+        var plan = validator.validate(new WorkflowGraph(nodes, List.of(legacy, matched, unmatched)), true);
+        assertThat(legacy.sourcePort()).isEqualTo("out");
+        assertThat(plan.incoming()).containsEntry("review", matched).containsEntry("ready", unmatched);
+
+        assertThatThrownBy(() -> validator.validate(new WorkflowGraph(nodes,
+                List.of(legacy, new Edge("bad", "check", "review"))), false)).hasMessageContaining("unavailable port");
+        assertThatThrownBy(() -> validator.validate(new WorkflowGraph(nodes,
+                List.of(new Edge("bad", "start", "check", "false"))), false)).hasMessageContaining("unavailable port");
     }
 
     @Test

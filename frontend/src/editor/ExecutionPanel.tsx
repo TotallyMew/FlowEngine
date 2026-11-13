@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock3, ListTree, Terminal } from 'lucide-react'
 import { api, errorText } from '../api'
-import { activeRun } from '../model'
+import { activeRun, lastExecutedNode } from '../model'
 import type { Run, RunStatus } from '../model'
+import { isBranchPort } from './graph'
 
 export function Status({ status }: { status: RunStatus | 'SKIPPED' }) {
   return <span className={`run-status ${status.toLowerCase()}`}><span className="dot" />{
@@ -39,7 +40,7 @@ export function ExecutionPanel({ workflowId, runId, selectedNode, run, runError,
     refetchInterval: query => query.state.data?.some(item => activeRun(item.status)) || activeRun(run?.status) ? 1500 : false,
     enabled: open,
   })
-  const result = run?.results.find(node => node.nodeId === selectedNode) ?? run?.results.at(-1)
+  const result = run?.results.find(node => node.nodeId === selectedNode) ?? lastExecutedNode(run)
   const label = (id: string) => run?.graph.nodes.find(node => node.id === id)?.label ?? id
 
   return <section className={`execution-panel ${open ? 'expanded' : ''}`} aria-label="Executions">
@@ -82,6 +83,7 @@ export function ExecutionPanel({ workflowId, runId, selectedNode, run, runError,
               </div>
               {result && <div className="result-data">
                 <h3>{label(result.nodeId)}{result.startedAt && result.finishedAt && <small>{duration(result.startedAt, result.finishedAt)}</small>}</h3>
+                {isBranchPort(result.outputPort) && <p>Selected output <span className={`branch-tag branch-${result.outputPort}`}>{result.outputPort}</span></p>}
                 {result.message && <p className="log-message">{result.message}</p>}
                 {result.error && <p className="notice error">{result.error}</p>}
                 <div className="payloads"><div><h4>Input</h4><pre>{result.input ? JSON.stringify(result.input, null, 2) : '—'}</pre></div>

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Copy, Link2, MousePointer2, Trash2 } from 'lucide-react'
 import { useStore } from 'zustand'
 import type { CanvasNode, NodeDefinition } from '../model'
-import { configProblem, parseValues } from './graph'
+import { configProblem, isBranchPort, outputPorts, parseValues } from './graph'
 import type { createEditor } from './store'
 import { nodePresentation } from './Canvas'
 
@@ -20,6 +20,8 @@ function NodeSettings({ store, node, definition }: { store: Props['store']; node
   const [values, setValues] = useState(() => text ?? JSON.stringify(data.config.values, null, 2))
   const [problem, setProblem] = useState<string | null>(null)
   const [target, setTarget] = useState('')
+  const ports = outputPorts(data.kind)
+  const [sourcePort, setSourcePort] = useState<string>(ports[0] ?? 'out')
   const update = store.getState().updateNode
   const outgoing = edges.filter(edge => edge.source === id)
   const targets = nodes.filter(other => other.id !== id && other.data.kind !== 'MANUAL_TRIGGER')
@@ -31,7 +33,25 @@ function NodeSettings({ store, node, definition }: { store: Props['store']; node
     </div>
     <label>Node name<input value={data.label} maxLength={80}
       onChange={event => update(id, { label: event.target.value })} /></label>
-    {definition.fields.map(field => <label key={field.key}>{field.label}
+    {data.kind === 'CONDITION' ? <>
+      <label>Field name<input value={String(data.config.field ?? '')} placeholder="sku" maxLength={100}
+        onChange={event => update(id, { config: { ...data.config, field: event.target.value } })} />
+        <small>Use the exact top-level JSON key.</small>
+      </label>
+      <label>Operator<select value={String(data.config.operator)} onChange={event => {
+        const operator = event.target.value
+        const field = data.config.field ?? ''
+        update(id, { config: operator === 'EQUALS' ? { field, operator, value: '' } : { field, operator } })
+      }}>
+        <option value="IS_EMPTY">Is empty</option>
+        <option value="EQUALS">Equals text</option>
+      </select>
+      <small>{data.config.operator === 'EQUALS' ? 'Matches a string exactly, including capitalization.'
+        : 'Matches a missing field, null, or text containing only whitespace.'}</small>
+      </label>
+      {data.config.operator === 'EQUALS' && <label>Text to match<input value={String(data.config.value ?? '')} maxLength={1000}
+        onChange={event => update(id, { config: { ...data.config, value: event.target.value } })} /></label>}
+    </> : definition.fields.map(field => <label key={field.key}>{field.label}
       {field.kind === 'json'
         ? <textarea className="json-input" rows={7} spellCheck={false} aria-invalid={!!problem || text !== undefined}
             value={values} onChange={event => {
@@ -54,14 +74,19 @@ function NodeSettings({ store, node, definition }: { store: Props['store']; node
     <div className="inspect-section">
       <h3>Connections</h3>
       {outgoing.map(edge => <div className="connection-row" key={edge.id}>
-        <span>{nodes.find(other => other.id === edge.target)?.data.label}</span>
+        <span>{isBranchPort(edge.sourceHandle) && <span className={`branch-tag branch-${edge.sourceHandle}`}>{edge.sourceHandle}</span>}
+          {nodes.find(other => other.id === edge.target)?.data.label}</span>
         <button className="icon-button" aria-label={`Remove connection to ${nodes.find(other => other.id === edge.target)?.data.label}`}
           onClick={() => store.getState().changeEdges([{ type: 'remove', id: edge.id }])}><Trash2 size={14} /></button>
       </div>)}
       {targets.length ? <form className="connection-form" onSubmit={event => {
         event.preventDefault()
-        if (target) store.getState().connect(id, target)
+        if (targets.some(node => node.id === target)) store.getState().connect(id, target, sourcePort)
       }}>
+        {ports.length > 1 && <label className="connection-output">Output<select value={sourcePort}
+          onChange={event => setSourcePort(event.target.value)}>
+          {ports.map(port => <option key={port} value={port}>{port}</option>)}
+        </select></label>}
         <select aria-label="Connection target" value={targets.some(node => node.id === target) ? target : ''}
           onChange={event => setTarget(event.target.value)}>
           <option value="">Choose a target</option>

@@ -2,17 +2,18 @@ import {
   Background, Controls, Handle, MiniMap, Position, ReactFlow, useReactFlow,
 } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
-import { Check, Code2, Minus, Plus, SquareTerminal, X, Zap } from 'lucide-react'
+import { Check, Code2, GitFork, Minus, Plus, SquareTerminal, X, Zap } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useStore } from 'zustand'
 import type { CanvasEdge, CanvasNode, NodeDefinition, NodeKind, Run } from '../model'
-import { connectionProblem, loadGraph } from './graph'
+import { connectionProblem, isBranchPort, loadGraph, outputPorts } from './graph'
 import type { createEditor } from './store'
 
 export const nodePresentation = {
   MANUAL_TRIGGER: { icon: Zap, color: 'trigger', category: 'Trigger' },
   SET_DATA: { icon: Code2, color: 'data', category: 'Data' },
   LOG: { icon: SquareTerminal, color: 'log', category: 'Utility' },
+  CONDITION: { icon: GitFork, color: 'condition', category: 'Logic' },
 }
 
 function WorkflowNode({ data, selected }: NodeProps<CanvasNode>) {
@@ -25,7 +26,10 @@ function WorkflowNode({ data, selected }: NodeProps<CanvasNode>) {
     <div className="node-title"><strong>{data.label}</strong><span>{presentation.category}</span></div>
     {data.status && <span className={`node-result ${data.status.toLowerCase()}`} title={data.status}
       aria-label={data.status}><StatusIcon size={14} /></span>}
-    <Handle type="source" position={Position.Right} id="out" />
+    {outputPorts(data.kind).map(port => isBranchPort(port) ? <Handle key={port} type="source" position={Position.Right}
+      id={port} className={`branch-handle branch-${port}`} aria-label={`${port} output`} title={`${port} output`}>
+      <span className="port-label">{port}</span>
+    </Handle> : <Handle key={port} type="source" position={Position.Right} id={port} />)}
   </div>
 }
 
@@ -49,7 +53,10 @@ export function Canvas({ store, definitions, run, selectResult, resultNode }: Pr
   const shownNodes = snapshot?.nodes.map(node => ({
     ...node, selected: node.id === resultNode, data: { ...node.data, status: statuses.get(node.id) },
   })) ?? nodes
-  const shownEdges = snapshot?.edges ?? edges
+  const shownEdges = snapshot?.edges.map(edge => ({
+    ...edge,
+    className: statuses.get(edge.target) === 'SKIPPED' ? `${edge.className ?? ''} edge-skipped` : edge.className,
+  })) ?? edges
   const canvasRef = useRef<HTMLElement>(null)
   const [fitOnMount] = useState(() => shownNodes.length > 0)
 
@@ -109,19 +116,20 @@ export function Canvas({ store, definitions, run, selectResult, resultNode }: Pr
         onNodeClick={run ? (_, node) => selectResult(node.id) : undefined}
         onPaneClick={run ? undefined : () => store.getState().select(null)}
         isValidConnection={connection => !connectionProblem(connection, nodes, edges)}
-        onConnect={connection => store.getState().connect(connection.source, connection.target)}
+        onConnect={connection => store.getState().connect(connection.source, connection.target, connection.sourceHandle ?? undefined)}
         onConnectEnd={(_, state) => {
           if (!state.isValid && state.fromNode && state.toNode) {
             const source = state.fromHandle?.type === 'source' ? state.fromNode.id : state.toNode.id
             const target = state.fromHandle?.type === 'source' ? state.toNode.id : state.fromNode.id
-            store.setState({ feedback: connectionProblem({ source, target }, nodes, edges) ?? 'Connect an output to an input.' })
+            const sourceHandle = state.fromHandle?.type === 'source' ? state.fromHandle.id : state.toHandle?.id
+            store.setState({ feedback: connectionProblem({ source, target, sourceHandle }, nodes, edges) ?? 'Connect an output to an input.' })
           }
         }}>
         <Background color="#303949" gap={22} size={1.2} />
         <Controls showInteractive={false} />
         {shownNodes.length > 0 && <MiniMap<CanvasNode> pannable zoomable maskColor="#0d142280" nodeColor={node => {
           const color = nodePresentation[node.data.kind].color
-          return color === 'trigger' ? '#8fa9ff' : color === 'data' ? '#5ccabc' : '#e2ac6f'
+          return color === 'trigger' ? '#8fa9ff' : color === 'data' ? '#5ccabc' : color === 'condition' ? '#c9a4fa' : '#e2ac6f'
         }} />}
       </ReactFlow>
       {shownNodes.length === 0 && !run && <div className="canvas-empty">

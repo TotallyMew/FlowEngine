@@ -63,6 +63,10 @@ Use a Java 25 JDK and Node.js 24 LTS. Check that `JAVA_HOME` points to the Java 
 4. Select **Save** or press **Ctrl+S**, then select **Run workflow**. Enter a JSON object such as `{"sku":"BIKE-123"}` and select **Run**. An empty field starts the workflow with `{}`.
 5. In **Executions**, inspect the log and the output containing both the SKU and the fields added by **Set Data**. Return to the editor and run the same revision with another SKU. Each execution keeps its own input and output.
 
+### Route a workflow by SKU
+
+Connect **Manual Trigger** to **Condition**. Set **Field name** to `sku` and choose **Is empty**. Connect the `true` output to a **Set Data** node that assigns `{"busena":"reikia_perziuros"}` and the `false` output to a **Set Data** node that assigns `{"busena":"paruošta"}`. Save and run with `{"sku":""}` and then `{"sku":"BIKE-123"}`. The execution inspector shows the selected output and marks the unused branch **Skipped**.
+
 ## Verification
 
 Run the backend suite with Docker Desktop active.
