@@ -49,6 +49,31 @@ class ExecutionEngineTest {
     }
 
     @Test
+    void transformsSelectedFieldsAndPreservesNullsAndNestedValues() {
+        var registry = new NodeRegistry();
+        var engine = new ExecutionEngine(new GraphValidator(registry), registry, clock);
+        var input = new LinkedHashMap<String, Object>();
+        input.put("sku", "BIKE-123");
+        input.put("price", 1299);
+        input.put("tags", List.of("bike", "new"));
+        input.put("note", null);
+        input.put("status", "ready");
+        var graph = new WorkflowGraph(List.of(node("start", "MANUAL_TRIGGER", Map.of()),
+                node("map", "TRANSFORM_DATA", Map.of("mapping", Map.of("productCode", "sku",
+                        "priceEur", "price", "labels", "tags", "comment", "note", "missing", "unknown")))),
+                List.of(new Edge("e", "start", "map")));
+        var outcome = engine.run(graph, input, now.plusSeconds(30));
+        var output = outcome.results().getLast().output();
+        assertThat(outcome.error()).isNull();
+        assertThat(output).containsOnlyKeys("productCode", "priceEur", "labels", "comment")
+                .containsEntry("productCode", "BIKE-123").containsEntry("priceEur", 1299)
+                .containsEntry("labels", List.of("bike", "new")).containsEntry("comment", null);
+        assertThat(input).containsEntry("status", "ready");
+        assertThatThrownBy(() -> registry.validate("TRANSFORM_DATA", Map.of("mapping", Map.of("price", 123))))
+                .hasMessageContaining("nonblank text");
+    }
+
+    @Test
     void routesMissingNullAndBlankSkuToTrueAndSkipsTheOtherBranchAndItsDescendants() {
         var registry = new NodeRegistry();
         var engine = new ExecutionEngine(new GraphValidator(registry), registry, clock);

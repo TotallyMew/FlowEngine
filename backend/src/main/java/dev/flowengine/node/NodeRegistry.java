@@ -32,7 +32,7 @@ public class NodeRegistry {
     }
 
     private static final String MANUAL = "MANUAL_TRIGGER";
-    private final List<NodeType> types = List.of(new ManualTrigger(), new Condition(), new SetData(), new Log());
+    private final List<NodeType> types = List.of(new ManualTrigger(), new Condition(), new SetData(), new TransformData(), new Log());
 
     public List<Definition> definitions() {
         return types.stream().map(NodeType::definition).toList();
@@ -120,6 +120,36 @@ public class NodeRegistry {
             var result = new LinkedHashMap<>(input);
             var values = (Map<?, ?>) config.get("values");
             values.forEach((key, value) -> result.put((String) key, value));
+            return new Output(Collections.unmodifiableMap(result), null);
+        }
+    }
+
+    private static final class TransformData implements NodeType {
+        @Override public Definition definition() {
+            return new Definition("TRANSFORM_DATA", "Transform Data", "Select and rename JSON fields.",
+                    true, List.of("out"), List.of(new Field("mapping", "Field mapping", "json",
+                    "Map each output key to an input key, for example {\"productCode\":\"sku\"}. Missing fields are omitted.")));
+        }
+
+        @Override public void validate(Map<String, Object> config) {
+            if (!config.keySet().equals(Set.of("mapping")) || !(config.get("mapping") instanceof Map<?, ?> mapping)
+                    || mapping.isEmpty() || mapping.size() > 100) {
+                throw new GraphException("Provide a JSON object with 1 to 100 field mappings.");
+            }
+            if (mapping.entrySet().stream().anyMatch(entry -> !validKey(entry.getKey()) || !validKey(entry.getValue()))) {
+                throw new GraphException("Each output and input key must be nonblank text of at most 100 characters.");
+            }
+        }
+
+        private boolean validKey(Object key) {
+            return key instanceof String text && !text.isBlank() && text.length() <= 100;
+        }
+
+        @Override public Output execute(Map<String, Object> config, Map<String, Object> input) {
+            var result = new LinkedHashMap<String, Object>();
+            ((Map<?, ?>) config.get("mapping")).forEach((target, source) -> {
+                if (input.containsKey(source)) result.put((String) target, input.get(source));
+            });
             return new Output(Collections.unmodifiableMap(result), null);
         }
     }

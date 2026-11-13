@@ -67,6 +67,10 @@ Use a Java 25 JDK and Node.js 24 LTS. Check that `JAVA_HOME` points to the Java 
 
 Connect **Manual Trigger** to **Condition**. Set **Field name** to `sku` and choose **Is empty**. Connect the `true` output to a **Set Data** node that assigns `{"busena":"reikia_perziuros"}` and the `false` output to a **Set Data** node that assigns `{"busena":"paruošta"}`. Save and run with `{"sku":""}` and then `{"sku":"BIKE-123"}`. The execution inspector shows the selected output and marks the unused branch **Skipped**.
 
+### Select and rename fields
+
+Add **Transform Data** after **Manual Trigger** or the ready branch above. Enter `{"productCode":"sku","priceEur":"price"}` in **Field mapping**. Run with `{"sku":"BIKE-123","price":1299,"busena":"paruošta"}` and inspect the node’s **Output** for `{"productCode":"BIKE-123","priceEur":1299}`. Mapping uses exact top-level keys, preserves JSON values including null, and omits missing keys.
+
 ## Verification
 
 Run the backend suite with Docker Desktop active.

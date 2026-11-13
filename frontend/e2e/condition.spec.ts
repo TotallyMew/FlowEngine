@@ -16,13 +16,18 @@ test('routes SKU input through the saved condition and records skipped nodes', a
   const config = page.getByRole('complementary', { name: 'Node configuration' })
   const node = (name: string) => canvas.locator('.flow-node').filter({ hasText: name })
   for (const [kind, name] of [
-    ['Manual Trigger', 'Manual Trigger'], ['Condition', 'Check SKU'], ['Set Data', 'Needs review'], ['Set Data', 'Ready'],
+    ['Manual Trigger', 'Manual Trigger'], ['Condition', 'Check SKU'], ['Set Data', 'Needs review'], ['Transform Data', 'Ready'],
   ] as const) {
     await library.getByRole('button', { name: new RegExp(kind) }).click()
     await config.getByLabel('Node name').fill(name)
     if (kind === 'Condition') await config.getByLabel('Field name').fill('sku')
     if (kind === 'Set Data') {
-      await config.getByLabel('Values').fill(JSON.stringify({ busena: name === 'Ready' ? 'paruošta' : 'reikia_perziuros' }))
+      await config.getByLabel('Values').fill('{"busena":"reikia_perziuros"}')
+    }
+    if (kind === 'Transform Data') {
+      await config.getByLabel('Field mapping').fill('{"productCode":42}')
+      await expect(config.getByRole('alert')).toContainText('Each output and input key')
+      await config.getByLabel('Field mapping').fill('{"productCode":"sku","priceEur":"price"}')
     }
   }
 
@@ -60,11 +65,13 @@ test('routes SKU input through the saved condition and records skipped nodes', a
   await expect(executions.locator('.result-data .branch-tag')).toHaveText('true')
 
   await page.getByRole('button', { name: 'Back to editor' }).click()
-  await run('{"sku":"BIKE-123"}')
+  await run('{"sku":"BIKE-123","price":1299,"busena":"paruošta"}')
   await expect(results.getByRole('button', { name: 'Ready Completed' })).toBeVisible()
   await expect(results.getByRole('button', { name: 'Needs review Skipped' })).toBeVisible()
-  await expect(executions.locator('pre').last()).toContainText('paruošta')
-  await expect(executions.locator('pre').last()).toContainText('BIKE-123')
+  const output = executions.locator('pre').last()
+  await expect(output).toContainText('"productCode": "BIKE-123"')
+  await expect(output).toContainText('"priceEur": 1299')
+  await expect(output).not.toContainText('"busena"')
   await expect(page.getByRole('region', { name: 'Execution graph' }).locator('.react-flow__edge.branch-true.edge-skipped')).toHaveCount(1)
 
   await page.reload()

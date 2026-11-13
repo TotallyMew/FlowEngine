@@ -2,7 +2,7 @@ import {
   Background, Controls, Handle, MiniMap, Position, ReactFlow, useReactFlow,
 } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
-import { Check, Code2, GitFork, Minus, Plus, SquareTerminal, X, Zap } from 'lucide-react'
+import { Check, Code2, GitFork, Minus, Plus, Shuffle, SquareTerminal, X, Zap } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useStore } from 'zustand'
 import type { CanvasEdge, CanvasNode, NodeDefinition, NodeKind, Run } from '../model'
@@ -12,6 +12,7 @@ import type { createEditor } from './store'
 export const nodePresentation = {
   MANUAL_TRIGGER: { icon: Zap, color: 'trigger', category: 'Trigger' },
   SET_DATA: { icon: Code2, color: 'data', category: 'Data' },
+  TRANSFORM_DATA: { icon: Shuffle, color: 'data', category: 'Data' },
   LOG: { icon: SquareTerminal, color: 'log', category: 'Utility' },
   CONDITION: { icon: GitFork, color: 'condition', category: 'Logic' },
 }
