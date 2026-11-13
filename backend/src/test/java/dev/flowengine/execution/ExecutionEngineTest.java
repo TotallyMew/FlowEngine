@@ -49,6 +49,41 @@ class ExecutionEngineTest {
     }
 
     @Test
+    void routesMissingNullAndBlankSkuToTrueAndSkipsTheOtherBranchAndItsDescendants() {
+        var registry = new NodeRegistry();
+        var engine = new ExecutionEngine(new GraphValidator(registry), registry, clock);
+        var graph = branchingGraph(Map.of("field", "sku", "operator", "IS_EMPTY"));
+        var nullSku = new LinkedHashMap<String, Object>();
+        nullSku.put("sku", null);
+
+        for (Map<String, Object> input : List.<Map<String, Object>>of(Map.of(), nullSku, Map.of("sku", " \t"))) {
+            var outcome = engine.run(graph, input, now.plusSeconds(30));
+            assertThat(outcome.error()).isNull();
+            assertThat(outcome.results()).extracting(ExecutionEngine.NodeResult::status)
+                    .containsExactly(COMPLETED, COMPLETED, COMPLETED, SKIPPED, SKIPPED);
+            assertThat(outcome.results().get(1).outputPort()).isEqualTo("true");
+            assertThat(outcome.results().get(2).output()).isEqualTo(input);
+        }
+
+        var outcome = engine.run(graph, Map.of("sku", "BIKE-123"), now.plusSeconds(30));
+        assertThat(outcome.error()).isNull();
+        assertThat(outcome.results()).extracting(ExecutionEngine.NodeResult::status)
+                .containsExactly(COMPLETED, COMPLETED, SKIPPED, COMPLETED, COMPLETED);
+        assertThat(outcome.results().get(1).outputPort()).isEqualTo("false");
+        assertThat(outcome.results().getLast().output()).containsEntry("sku", "BIKE-123");
+    }
+
+    @Test
+    void equalsUsesExactStringMatchingWithoutCoercion() {
+        var registry = new NodeRegistry();
+        var engine = new ExecutionEngine(new GraphValidator(registry), registry, clock);
+        var graph = branchingGraph(Map.of("field", "sku", "operator", "EQUALS", "value", "123"));
+        assertThat(engine.run(graph, Map.of("sku", "123"), now.plusSeconds(30)).results().get(1).outputPort()).isEqualTo("true");
+        assertThat(engine.run(graph, Map.of("sku", 123), now.plusSeconds(30)).results().get(1).outputPort()).isEqualTo("false");
+        assertThat(engine.run(graph, Map.of("sku", "123 "), now.plusSeconds(30)).results().get(1).outputPort()).isEqualTo("false");
+    }
+
+    @Test
     void timesOutBeforeExecutingAnyNodeAndSkipsRemainingNodes() {
         var registry = spy(new NodeRegistry());
         var outcome = new ExecutionEngine(new GraphValidator(registry), registry, clock).run(simpleGraph(), Map.of(), now);
@@ -72,6 +107,16 @@ class ExecutionEngineTest {
     private WorkflowGraph simpleGraph() {
         return new WorkflowGraph(List.of(node("start", "MANUAL_TRIGGER", Map.of()), node("log", "LOG", Map.of("message", "OK"))),
                 List.of(new Edge("e", "start", "log")));
+    }
+
+    private WorkflowGraph branchingGraph(Map<String, Object> config) {
+        return new WorkflowGraph(List.of(node("start", "MANUAL_TRIGGER", Map.of()),
+                node("check", "CONDITION", config),
+                node("review", "LOG", Map.of("message", "Review")),
+                node("ready", "LOG", Map.of("message", "Ready")),
+                node("report", "LOG", Map.of("message", "Report"))),
+                List.of(new Edge("e1", "start", "check"), new Edge("e2", "check", "review", "true"),
+                        new Edge("e3", "check", "ready", "false"), new Edge("e4", "ready", "report")));
     }
 
     private Node node(String id, String type, Map<String, Object> config) {

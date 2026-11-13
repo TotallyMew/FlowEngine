@@ -3,21 +3,23 @@ import type { Edge, Node } from '@xyflow/react'
 export type Json = null | boolean | number | string | Json[] | JsonObject
 export type JsonObject = { [key: string]: Json }
 
-export type NodeKind = 'MANUAL_TRIGGER' | 'SET_DATA' | 'LOG'
+export type NodeKind = 'MANUAL_TRIGGER' | 'SET_DATA' | 'LOG' | 'CONDITION'
+export type OutputPort = 'out' | 'true' | 'false'
 export type Position = { x: number; y: number }
 export type NodeConfig = Record<string, Json>
 
 export type GraphNode = { id: string; type: NodeKind; label: string; position: Position; config: NodeConfig }
-export type GraphEdge = { id: string; source: string; target: string }
+export type GraphEdge = { id: string; source: string; target: string; sourcePort?: OutputPort }
 export type Graph = { nodes: GraphNode[]; edges: GraphEdge[] }
 
-export type NodeField = { key: string; label: string; kind: 'text' | 'json'; description: string }
+export type NodeField = { key: string; label: string; kind: 'text' | 'json' | 'select'; description: string }
 export type NodeDefinition = {
   type: NodeKind
   label: string
   description: string
   input: boolean
   output: boolean
+  outputPorts: OutputPort[]
   fields: NodeField[]
 }
 
@@ -43,6 +45,7 @@ export type NodeResult = {
   output: JsonObject | null
   message: string | null
   error: string | null
+  outputPort?: OutputPort | null
 }
 export type Run = RunSummary & { workflowId: string; graph: Graph; input: JsonObject; results: NodeResult[]; error: string | null }
 
@@ -55,3 +58,5 @@ export type CanvasNode = Node<{
 export type CanvasEdge = Edge
 
 export const activeRun = (status: RunStatus | undefined) => status === 'PENDING' || status === 'RUNNING'
+
+export const lastExecutedNode = (run: Run | undefined) => run?.results.findLast(node => node.status !== 'SKIPPED')

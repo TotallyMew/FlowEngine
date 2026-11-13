@@ -5,7 +5,7 @@ import { ArrowLeft, Copy, Ellipsis, RotateCcw, Save, Trash2 } from 'lucide-react
 import { AlertDialog, DropdownMenu } from 'radix-ui'
 import { useStore } from 'zustand'
 import { api, ApiError, errorText } from '../api'
-import { activeRun } from '../model'
+import { activeRun, lastExecutedNode } from '../model'
 import type { Draft, JsonObject, NodeDefinition } from '../model'
 import { Canvas } from './Canvas'
 import { ExecutionPanel } from './ExecutionPanel'
@@ -179,7 +179,7 @@ export function Editor({ draft, definitions, onDirty, selectWorkflow, sessionExp
     <div className={`editor-grid ${runId ? 'snapshot-mode' : ''}`}>
       <ReactFlowProvider key={runId ?? `draft-${draftLoad}`}>
         {runId && !run.data ? <div className="snapshot-loading">{run.error ? 'Execution snapshot unavailable.' : 'Loading execution snapshot…'}</div>
-          : <Canvas store={store} definitions={definitions} run={run.data} selectResult={setResultNode} resultNode={resultNode ?? run.data?.results.at(-1)?.nodeId ?? null} />}
+          : <Canvas store={store} definitions={definitions} run={run.data} selectResult={setResultNode} resultNode={resultNode ?? lastExecutedNode(run.data)?.nodeId ?? null} />}
       </ReactFlowProvider>
       {!runId && <Inspector key={draftLoad} store={store} definitions={definitions} />}
     </div>

@@ -13,7 +13,24 @@ const graph: Graph = {
 }
 
 const draft: Draft = { id: 'workflow', revision: 1, name: 'Run example', updatedAt: '2026-10-01T10:00:00Z', graph }
-const trigger: NodeDefinition = { type: 'MANUAL_TRIGGER', label: 'Manual Trigger', description: '', input: false, output: true, fields: [] }
+const trigger: NodeDefinition = {
+  type: 'MANUAL_TRIGGER', label: 'Manual Trigger', description: '', input: false, output: true, outputPorts: ['out'], fields: [],
+}
+
+it('round-trips both condition outputs and preserves a legacy connection', () => {
+  const conditional: Graph = {
+    nodes: [...graph.nodes, { id: 'check', type: 'CONDITION', label: 'Check', position: { x: 0, y: 0 },
+      config: { field: 'sku', operator: 'IS_EMPTY' } }],
+    edges: [{ id: 'a', source: 'start', target: 'check' },
+      { id: 'b', source: 'check', target: 'data', sourcePort: 'true' },
+      { id: 'c', source: 'check', target: 'log', sourcePort: 'false' }],
+  }
+  const { nodes, edges } = loadGraph(conditional)
+  expect(edges.map(edge => edge.sourceHandle)).toEqual(['out', 'true', 'false'])
+  expect(serializeGraph(nodes, edges)).toEqual(conditional)
+  expect(connectionProblem({ source: 'check', target: 'data' }, nodes, [])).toContain('true or false')
+  expect(configProblem('CONDITION', { field: '', operator: 'IS_EMPTY' })).toContain('field name')
+})
 
 describe('graph serialization', () => {
   it('preserves positions, config, and edges while dropping canvas UI state', () => {

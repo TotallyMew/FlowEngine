@@ -16,6 +16,8 @@ flowchart LR
 
 A graph stores node IDs, types, labels, positions and configurations, and directed edges. The server supplies node definitions with port capabilities and field metadata. One Manual Trigger starts a runnable workflow. Every other node must have one parent and be reachable from the trigger. Fan-out is supported. Cycles and merges are rejected. A draft can contain disconnected components while it is being assembled. Draft writes use a revision precondition and JPA optimistic locking to protect concurrent edits.
 
+Connections use an optional `sourcePort` that defaults to `out` for existing graphs. The Condition node checks an exact top-level JSON key. **Is empty** matches a missing key, JSON null, or a blank string. **Equals text** compares strings exactly. The original input flows through the selected `true` or `false` output. Nodes on the other branch and their descendants are marked skipped. If the selected output has no connection, that branch ends at the Condition node.
+
 The Manual Trigger passes the run’s input JSON object downstream. The run API accepts it in the optional `input` field and defaults to `{}` when omitted or null. Set Data shallow-merges JSON object keys into its parent’s output. A Log node preserves the input and records a literal message in execution history. A topological plan runs one node at a time. A failed node ends the run and marks the unvisited nodes skipped. The inspector reads the graph and input captured at enqueue time along with the node results, even after the draft is edited. Node records include timestamps, inputs, outputs, messages, and safe failure details. Status and history are fetched by polling.
 
 ## Delivery and recovery

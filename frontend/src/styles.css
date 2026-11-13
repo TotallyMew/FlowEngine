@@ -121,6 +121,7 @@ small { font-size: 11px; }
 .trigger { --node-color: #a3b8ff; --node-bg: #263557; }
 .data { --node-color: #79ddce; --node-bg: #183e3d; }
 .log { --node-color: #f1bc82; --node-bg: #443024; }
+.condition { --node-color: #c9a4fa; --node-bg: #3a2a53; }
 .node-glyph { display: grid; place-items: center; flex-shrink: 0; width: 30px; height: 30px; border-radius: 6px; background: var(--node-bg); color: var(--node-color); }
 .editor-canvas { position: relative; min-width: 0; min-height: 0; background: #10151e; }
 .canvas-meta { position: absolute; z-index: 4; top: 10px; left: 12px; display: flex; gap: 9px; align-items: center; pointer-events: none; font-size: 11px; color: var(--muted); }
@@ -132,6 +133,10 @@ small { font-size: 11px; }
 .canvas-notice .icon-button { color: inherit; width: 25px; min-height: 25px; }
 .react-flow.dark { --xy-background-color-default: #10151e; --xy-edge-stroke-default: #889ec9; --xy-edge-stroke-selected-default: #c3d4ff; }
 .react-flow__edge-path { stroke-width: 2; }
+.branch-true { --branch-color: #79ddce; }
+.branch-false { --branch-color: #efba78; }
+.react-flow__edge.branch-edge .react-flow__edge-path { stroke: var(--branch-color); }
+.react-flow__edge.edge-skipped .react-flow__edge-path { opacity: 0.38; stroke-dasharray: 4 4; }
 .react-flow__controls { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
 .react-flow__controls-button { background: #1b2535; border-color: #2d3a50; color: #d6e2f9; }
 .react-flow__controls-button:hover { background: #334464; }
@@ -144,6 +149,12 @@ small { font-size: 11px; }
 .node-title strong { font-size: 12px; font-weight: 650; }
 .node-title span { font-size: 10px; color: var(--muted); }
 .flow-node .react-flow__handle { width: 12px; height: 12px; background: var(--node-color); border: 2px solid #182233; }
+.flow-node.condition { min-height: 72px; padding-right: 42px; }
+.flow-node .branch-handle { background: var(--branch-color); }
+.flow-node .branch-handle.branch-true { top: 30%; }
+.flow-node .branch-handle.branch-false { top: 70%; }
+.port-label { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--branch-color); font-size: 10px; pointer-events: none; }
+.branch-tag { display: inline-block; color: var(--branch-color); font-family: Consolas, monospace; margin-right: 6px; }
 .node-result { display: grid; place-items: center; position: absolute; top: -8px; right: -7px; width: 21px; height: 21px; background: #17202d; border: 1px solid #405170; border-radius: 50%; color: var(--muted); }
 .node-result.completed { color: var(--green); }
 .node-result.failed { color: var(--red); }
@@ -161,6 +172,8 @@ small { font-size: 11px; }
 .connection-row { justify-content: space-between; background: #1b2434; padding: 0 3px 0 8px; border-radius: 5px; }
 .connection-row .icon-button { width: 27px; min-height: 27px; }
 .connection-form select { flex: 1; }
+.connection-form { flex-wrap: wrap; }
+.connection-output { width: 100%; }
 .inspect-actions { margin-top: 2px; flex-wrap: wrap; }
 .inspect-actions .danger { color: var(--red); }
 .panel-empty { display: grid; align-content: center; justify-items: center; padding: 20px 12px; text-align: center; gap: 7px; color: var(--muted); font-size: 12px; }
