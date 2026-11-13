@@ -2,15 +2,17 @@ import {
   Background, Controls, Handle, MiniMap, Position, ReactFlow, useReactFlow,
 } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
-import { Check, Code2, GitFork, Minus, Plus, Shuffle, SquareTerminal, X, Zap } from 'lucide-react'
+import { Check, Code2, GitFork, Minus, Plus, Shuffle, SquareTerminal, Webhook, X, Zap } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useStore } from 'zustand'
+import { isTrigger } from '../model'
 import type { CanvasEdge, CanvasNode, NodeDefinition, NodeKind, Run } from '../model'
 import { connectionProblem, isBranchPort, loadGraph, outputPorts } from './graph'
 import type { createEditor } from './store'
 
 export const nodePresentation = {
   MANUAL_TRIGGER: { icon: Zap, color: 'trigger', category: 'Trigger' },
+  WEBHOOK_TRIGGER: { icon: Webhook, color: 'trigger', category: 'Trigger' },
   SET_DATA: { icon: Code2, color: 'data', category: 'Data' },
   TRANSFORM_DATA: { icon: Shuffle, color: 'data', category: 'Data' },
   LOG: { icon: SquareTerminal, color: 'log', category: 'Utility' },
@@ -22,7 +24,7 @@ function WorkflowNode({ data, selected }: NodeProps<CanvasNode>) {
   const Icon = presentation.icon
   const StatusIcon = data.status === 'COMPLETED' ? Check : data.status === 'FAILED' ? X : Minus
   return <div className={`flow-node ${presentation.color} ${selected ? 'selected' : ''}`}>
-    {data.kind !== 'MANUAL_TRIGGER' && <Handle type="target" position={Position.Left} id="in" />}
+    {!isTrigger(data.kind) && <Handle type="target" position={Position.Left} id="in" />}
     <span className="node-glyph"><Icon size={18} /></span>
     <div className="node-title"><strong>{data.label}</strong><span>{presentation.category}</span></div>
     {data.status && <span className={`node-result ${data.status.toLowerCase()}`} title={data.status}
@@ -136,7 +138,7 @@ export function Canvas({ store, definitions, run, selectResult, resultNode }: Pr
       {shownNodes.length === 0 && !run && <div className="canvas-empty">
         <span className="empty-icon"><Zap size={25} /></span>
         <h2>Start with a trigger</h2>
-        <p>Add a Manual Trigger, then connect a node to its output.</p>
+        <p>Add a trigger from the node library, then connect a node to its output.</p>
         <button className="button" onClick={() => {
           const trigger = definitions.find(item => item.type === 'MANUAL_TRIGGER')
           if (trigger) addAtCenter(trigger)

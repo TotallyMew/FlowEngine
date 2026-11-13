@@ -1,4 +1,5 @@
 import type { Connection } from '@xyflow/react'
+import { isTrigger } from '../model'
 import type { CanvasEdge, CanvasNode, Graph, JsonObject, NodeConfig, NodeKind, OutputPort } from '../model'
 
 const conditionPorts = ['true', 'false'] as const
@@ -41,6 +42,7 @@ export function serializeGraph(nodes: CanvasNode[], edges: CanvasEdge[]): Graph 
 export function initialConfig(type: NodeKind): NodeConfig {
   switch (type) {
     case 'MANUAL_TRIGGER': return {}
+    case 'WEBHOOK_TRIGGER': return {}
     case 'SET_DATA': return { values: {} }
     case 'TRANSFORM_DATA': return { mapping: {} }
     case 'LOG': return { message: 'Workflow completed.' }
@@ -104,7 +106,7 @@ export function connectionProblem(
   const sourceNode = nodes.find(node => node.id === source)
   const targetNode = nodes.find(node => node.id === target)
   if (!targetNode || !sourceNode) return 'Connect two existing nodes.'
-  if (targetNode.data.kind === 'MANUAL_TRIGGER') return 'The Manual Trigger has no input.'
+  if (isTrigger(targetNode.data.kind)) return 'Trigger nodes have no input.'
   if (!outputPorts(sourceNode.data.kind).some(port => port === (sourceHandle ?? 'out'))) {
     return sourceNode.data.kind === 'CONDITION' ? 'Choose the true or false output.' : 'Connection uses an unavailable output.'
   }

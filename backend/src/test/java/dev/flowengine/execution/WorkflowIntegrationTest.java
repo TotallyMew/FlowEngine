@@ -131,6 +131,61 @@ class WorkflowIntegrationTest {
     }
 
     @Test
+    void protectsWebhookRegistrationAndRunsOnlyTheRegisteredRevision() throws Exception {
+        String workflow = create("Webhook workflow");
+        String registration = workflow + "/webhook";
+        String endpoint = "/api/webhooks/" + workflow.substring(workflow.lastIndexOf('/') + 1);
+        long manualRevision = save(workflow, 0);
+        mvc.perform(put(registration).with(user("alice")).with(csrf()).contentType("application/json")
+                .content("{\"revision\":" + manualRevision + "}")).andExpect(status().isUnprocessableContent());
+        long revision = saveWebhook(workflow, manualRevision);
+
+        mvc.perform(get(registration).with(user("other"))).andExpect(status().isNotFound());
+        mvc.perform(put(registration).with(user("other")).with(csrf()).contentType("application/json")
+                .content("{\"revision\":" + revision + "}")).andExpect(status().isNotFound());
+        mvc.perform(put(registration).with(user("alice")).contentType("application/json")
+                .content("{\"revision\":" + revision + "}")).andExpect(status().isForbidden());
+        mvc.perform(post(workflow + "/executions").with(user("alice")).with(csrf()).contentType("application/json")
+                .content("{\"revision\":" + revision + "}")).andExpect(status().isUnprocessableContent());
+        mvc.perform(post(endpoint).contentType("application/json").content("{}")).andExpect(status().isNotFound());
+
+        String first = registerWebhook(registration, revision);
+        String token = registerWebhook(registration, revision);
+        assertThat(token).isNotEqualTo(first);
+        mvc.perform(get(registration).with(user("alice"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.revision").value(revision)).andExpect(jsonPath("$.token").doesNotExist());
+        mvc.perform(post(endpoint).header("Authorization", "Bearer " + first).contentType("application/json").content("{}"))
+                .andExpect(status().isNotFound());
+        mvc.perform(post(endpoint).header("Authorization", "Bearer " + token).contentType("application/json").content("[]"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post(endpoint).header("Authorization", "Bearer " + token).contentType("application/json")
+                .content("{\"sku\":\"" + "x".repeat(128 * 1024) + "\"}")).andExpect(status().isContentTooLarge());
+
+        var accepted = mvc.perform(post(endpoint).header("Authorization", "Bearer " + token)
+                .contentType("application/json").content("{\"sku\":\"BIKE-123\"}"))
+                .andExpect(status().isAccepted()).andExpect(jsonPath("$.graph").doesNotExist()).andReturn();
+        String run = workflow + "/executions/" + body(accepted.getResponse().getContentAsString()).path("executionId").asText();
+        await().atMost(15, SECONDS).untilAsserted(() -> mvc.perform(get(run).with(user("alice")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.workflowRevision").value(revision))
+                .andExpect(jsonPath("$.results[2].output.sku").value("BIKE-123")));
+        mvc.perform(get(run)).andExpect(status().isUnauthorized());
+        mvc.perform(delete(registration).with(user("other")).with(csrf())).andExpect(status().isNotFound());
+
+        jdbc.sql("UPDATE webhook_endpoints SET request_count = 30, window_started_at = now() WHERE workflow_id = :id")
+                .param("id", UUID.fromString(endpoint.substring(endpoint.lastIndexOf('/') + 1))).update();
+        mvc.perform(post(endpoint).header("Authorization", "Bearer " + token).contentType("application/json").content("{}"))
+                .andExpect(status().isTooManyRequests());
+        long nextRevision = saveWebhook(workflow, revision);
+        mvc.perform(post(endpoint).header("Authorization", "Bearer " + token).contentType("application/json").content("{}"))
+                .andExpect(status().isNotFound());
+        String latest = registerWebhook(registration, nextRevision);
+        mvc.perform(delete(registration).with(user("alice")).with(csrf())).andExpect(status().isNoContent());
+        mvc.perform(post(endpoint).header("Authorization", "Bearer " + latest).contentType("application/json").content("{}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void failsAnAbandonedClaimWithoutMakingItRunnableAgain() throws Exception {
         String workflow = create("Recovery");
         long revision = save(workflow, 0);
@@ -189,6 +244,20 @@ class WorkflowIntegrationTest {
         var created = mvc.perform(post(WORKFLOWS).with(user("alice")).with(csrf()).contentType("application/json")
                 .content("{\"name\":\"" + name + "\"}")).andExpect(status().isCreated()).andReturn();
         return WORKFLOWS + "/" + body(created.getResponse().getContentAsString()).path("id").asText();
+    }
+
+    private long saveWebhook(String workflow, long revision) throws Exception {
+        var payload = updateBody(revision, "Webhook revision " + revision).replace("MANUAL_TRIGGER", "WEBHOOK_TRIGGER");
+        var saved = mvc.perform(put(workflow).with(user("alice")).with(csrf())
+                .contentType("application/json").content(payload)).andExpect(status().isOk()).andReturn();
+        return body(saved.getResponse().getContentAsString()).path("revision").asLong();
+    }
+
+    private String registerWebhook(String path, long revision) throws Exception {
+        var registered = mvc.perform(put(path).with(user("alice")).with(csrf()).contentType("application/json")
+                .content("{\"revision\":" + revision + "}")).andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store")).andReturn();
+        return body(registered.getResponse().getContentAsString()).path("token").asText();
     }
 
     private String queueWithSku(String executions, long revision, String sku) throws Exception {

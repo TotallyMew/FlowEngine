@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Copy, Link2, MousePointer2, Trash2 } from 'lucide-react'
 import { useStore } from 'zustand'
+import { isTrigger } from '../model'
 import type { CanvasNode, NodeDefinition } from '../model'
 import { configProblem, isBranchPort, outputPorts, parseJsonObject, parseValues } from './graph'
 import type { createEditor } from './store'
@@ -25,7 +26,7 @@ function NodeSettings({ store, node, definition }: { store: Props['store']; node
   const [sourcePort, setSourcePort] = useState<string>(ports[0] ?? 'out')
   const update = store.getState().updateNode
   const outgoing = edges.filter(edge => edge.source === id)
-  const targets = nodes.filter(other => other.id !== id && other.data.kind !== 'MANUAL_TRIGGER')
+  const targets = nodes.filter(other => other.id !== id && !isTrigger(other.data.kind))
 
   return <>
     <div className={`inspect-title ${nodePresentation[data.kind].color}`}>
@@ -98,7 +99,7 @@ function NodeSettings({ store, node, definition }: { store: Props['store']; node
       </form> : <p className="muted">Add another node to connect an output.</p>}
     </div>
     <div className="inspect-actions">
-      {data.kind !== 'MANUAL_TRIGGER' && <button className="button" disabled={nodes.length >= 50}
+      {!isTrigger(data.kind) && <button className="button" disabled={nodes.length >= 50}
         onClick={() => store.getState().duplicate(id)}><Copy size={14} /> Duplicate</button>}
       <button className="button danger" onClick={() => store.getState().remove(id)}><Trash2 size={14} /> Delete</button>
     </div>

@@ -20,4 +20,8 @@ interface WorkflowRepository extends JpaRepository<Workflow, UUID> {
     @Lock(LockModeType.PESSIMISTIC_READ)
     @Query("select w from Workflow w where w.id = :id and w.owner = :owner")
     Optional<Workflow> findForRun(UUID id, String owner);
+
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("select w from Workflow w where w.id = :id and w.revision = :revision")
+    Optional<Workflow> findWebhookRevision(UUID id, long revision);
 }

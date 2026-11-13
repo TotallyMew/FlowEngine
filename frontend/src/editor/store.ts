@@ -1,6 +1,7 @@
 import { applyEdgeChanges, applyNodeChanges } from '@xyflow/react'
 import type { EdgeChange, NodeChange } from '@xyflow/react'
 import { createStore } from 'zustand'
+import { isTrigger } from '../model'
 import type { CanvasEdge, CanvasNode, Draft, NodeConfig, NodeDefinition, Position } from '../model'
 import { canvasEdge, connectionProblem, initialConfig, loadGraph, serializeGraph } from './graph'
 
@@ -66,8 +67,8 @@ export function createEditor(draft: Draft) {
     changeEdges: changes => set(state => ({ edges: applyEdgeChanges(changes, state.edges) })),
     add: (definition, position) => {
       const { nodes } = get()
-      if (nodes.length >= 50 || (!definition.input && nodes.some(node => node.data.kind === definition.type))) {
-        set({ feedback: nodes.length >= 50 ? 'A workflow can have up to 50 nodes.' : 'A workflow can have one Manual Trigger.' })
+      if (nodes.length >= 50 || (!definition.input && nodes.some(node => isTrigger(node.data.kind)))) {
+        set({ feedback: nodes.length >= 50 ? 'A workflow can have up to 50 nodes.' : 'A workflow can have only one trigger.' })
         return
       }
       const id = crypto.randomUUID()
@@ -92,7 +93,7 @@ export function createEditor(draft: Draft) {
     }),
     duplicate: id => set(state => {
       const original = state.nodes.find(node => node.id === id)
-      if (!original || original.data.kind === 'MANUAL_TRIGGER' || state.nodes.length >= 50) return state
+      if (!original || isTrigger(original.data.kind) || state.nodes.length >= 50) return state
       const copyId = crypto.randomUUID()
       const text = state.configText[id]
       return {

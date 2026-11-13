@@ -29,15 +29,19 @@ type Props = {
   selectRun: (id: string) => void
   selectNode: (id: string) => void
   open: boolean
+  watchForExternalRuns: boolean
   toggle: () => void
 }
 
-export function ExecutionPanel({ workflowId, runId, selectedNode, run, runError, retry, selectRun, selectNode, open, toggle }: Props) {
+export function ExecutionPanel({ workflowId, runId, selectedNode, run, runError, retry, selectRun, selectNode, open, watchForExternalRuns, toggle }: Props) {
   const [page, setPage] = useState(0)
   const history = useQuery({
     queryKey: ['executions', workflowId, page],
     queryFn: () => api.history(workflowId, page),
-    refetchInterval: query => query.state.data?.some(item => activeRun(item.status)) || activeRun(run?.status) ? 1500 : false,
+    refetchInterval: query => {
+      if (query.state.data?.some(item => activeRun(item.status)) || activeRun(run?.status)) return 1500
+      return watchForExternalRuns && page === 0 ? 3000 : false
+    },
     enabled: open,
   })
   const result = run?.results.find(node => node.nodeId === selectedNode) ?? lastExecutedNode(run)

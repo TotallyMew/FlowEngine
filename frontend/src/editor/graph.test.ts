@@ -72,7 +72,7 @@ describe('editor interactions', () => {
     store.getState().select('data')
     expect(isDirty(store.getState())).toBe(false)
     store.getState().add(trigger, { x: 0, y: 0 })
-    expect(store.getState().feedback).toContain('one Manual Trigger')
+    expect(store.getState().feedback).toContain('one trigger')
     store.getState().duplicate('data')
     expect(store.getState().nodes).toHaveLength(4)
     expect(isDirty(store.getState())).toBe(true)
