@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Copy, Link2, MousePointer2, Trash2 } from 'lucide-react'
 import { useStore } from 'zustand'
 import type { CanvasNode, NodeDefinition } from '../model'
-import { configProblem, isBranchPort, outputPorts, parseValues } from './graph'
+import { configProblem, isBranchPort, outputPorts, parseJsonObject, parseValues } from './graph'
 import type { createEditor } from './store'
 import { nodePresentation } from './Canvas'
 
@@ -17,7 +17,8 @@ function NodeSettings({ store, node, definition }: { store: Props['store']; node
   const nodes = useStore(store, state => state.nodes)
   const edges = useStore(store, state => state.edges)
   const text = useStore(store, state => state.configText[id])
-  const [values, setValues] = useState(() => text ?? JSON.stringify(data.config.values, null, 2))
+  const jsonField = definition.fields.find(field => field.kind === 'json')
+  const [values, setValues] = useState(() => text ?? (jsonField ? JSON.stringify(data.config[jsonField.key], null, 2) : ''))
   const [problem, setProblem] = useState<string | null>(null)
   const [target, setTarget] = useState('')
   const ports = outputPorts(data.kind)
@@ -58,7 +59,8 @@ function NodeSettings({ store, node, definition }: { store: Props['store']; node
               const value = event.target.value
               setValues(value)
               try {
-                update(id, { config: { [field.key]: parseValues(value) } })
+                const parsed = data.kind === 'TRANSFORM_DATA' ? parseJsonObject(value, field.label) : parseValues(value)
+                update(id, { config: { [field.key]: parsed } })
                 setProblem(null)
               } catch (error) {
                 update(id, {}, value)
@@ -68,8 +70,8 @@ function NodeSettings({ store, node, definition }: { store: Props['store']; node
         : <textarea rows={3} value={String(data.config[field.key] ?? '')} maxLength={1000}
             onChange={event => update(id, { config: { [field.key]: event.target.value } })} />}
       <small>{field.description}</small>
-      {(field.kind === 'json' ? problem ?? (text !== undefined ? 'Enter a valid JSON object.' : null) : configProblem(data.kind, data.config)) &&
-        <span className="field-error" role="alert">{field.kind === 'json' ? problem ?? 'Enter a valid JSON object.' : configProblem(data.kind, data.config)}</span>}
+      {(problem ?? (text !== undefined ? 'Enter a valid JSON object.' : configProblem(data.kind, data.config))) &&
+        <span className="field-error" role="alert">{problem ?? (text !== undefined ? 'Enter a valid JSON object.' : configProblem(data.kind, data.config))}</span>}
     </label>)}
     <div className="inspect-section">
       <h3>Connections</h3>

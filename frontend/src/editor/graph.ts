@@ -42,6 +42,7 @@ export function initialConfig(type: NodeKind): NodeConfig {
   switch (type) {
     case 'MANUAL_TRIGGER': return {}
     case 'SET_DATA': return { values: {} }
+    case 'TRANSFORM_DATA': return { mapping: {} }
     case 'LOG': return { message: 'Workflow completed.' }
     case 'CONDITION': return { field: '', operator: 'IS_EMPTY' }
   }
@@ -67,6 +68,17 @@ export function parseValues(text: string): JsonObject {
 }
 
 export function configProblem(kind: NodeKind, config: NodeConfig): string | undefined {
+  if (kind === 'TRANSFORM_DATA') {
+    const { mapping } = config
+    if (!mapping || typeof mapping !== 'object' || Array.isArray(mapping)
+        || !Object.keys(mapping).length || Object.keys(mapping).length > 100) {
+      return 'Provide a JSON object with 1 to 100 field mappings.'
+    }
+    const validKey = (value: unknown) => typeof value === 'string' && !!value.trim() && value.length <= 100
+    if (Object.entries(mapping).some(([target, source]) => !validKey(target) || !validKey(source))) {
+      return 'Each output and input key must be nonblank text of at most 100 characters.'
+    }
+  }
   if (kind === 'LOG' && (typeof config.message !== 'string' || !config.message.trim() || config.message.length > 1000)) {
     return 'Enter a message from 1 to 1,000 characters.'
   }

@@ -18,6 +18,8 @@ A graph stores node IDs, types, labels, positions and configurations, and direct
 
 Connections use an optional `sourcePort` that defaults to `out` for existing graphs. The Condition node checks an exact top-level JSON key. **Is empty** matches a missing key, JSON null, or a blank string. **Equals text** compares strings exactly. The original input flows through the selected `true` or `false` output. Nodes on the other branch and their descendants are marked skipped. If the selected output has no connection, that branch ends at the Condition node.
 
+Transform Data builds a new object from an output-key-to-input-key mapping. Keys are exact, top-level strings. The node preserves the JSON value types, copies explicit null values, and omits mappings whose source key is absent.
+
 The Manual Trigger passes the run’s input JSON object downstream. The run API accepts it in the optional `input` field and defaults to `{}` when omitted or null. Set Data shallow-merges JSON object keys into its parent’s output. A Log node preserves the input and records a literal message in execution history. A topological plan runs one node at a time. A failed node ends the run and marks the unvisited nodes skipped. The inspector reads the graph and input captured at enqueue time along with the node results, even after the draft is edited. Node records include timestamps, inputs, outputs, messages, and safe failure details. Status and history are fetched by polling.
 
 ## Delivery and recovery
