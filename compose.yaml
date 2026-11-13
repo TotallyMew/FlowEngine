@@ -46,6 +46,7 @@ services:
       FLOW_OPERATOR_USERNAME: ${FLOW_OPERATOR_USERNAME:-operator}
       FLOW_OPERATOR_PASSWORD: ${FLOW_OPERATOR_PASSWORD:?Set FLOW_OPERATOR_PASSWORD in .env}
       FLOW_SECURE_COOKIE: ${FLOW_SECURE_COOKIE:-false}
+      FLOW_HTTP_ALLOWED_HOSTS: ${FLOW_HTTP_ALLOWED_HOSTS:-}
     depends_on:
       postgres:
         condition: service_healthy

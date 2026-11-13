@@ -1,5 +1,6 @@
 package dev.flowengine.workflow;
 
+import dev.flowengine.node.HttpRequestNode;
 import dev.flowengine.node.NodeRegistry;
 import dev.flowengine.workflow.WorkflowGraph.Edge;
 import dev.flowengine.workflow.WorkflowGraph.Node;
@@ -8,9 +9,16 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 class GraphValidatorTest {
-    private final GraphValidator validator = new GraphValidator(new NodeRegistry());
+    private final GraphValidator validator;
+
+    GraphValidatorTest() {
+        var http = mock(HttpRequestNode.class);
+        when(http.definition()).thenCallRealMethod();
+        validator = new GraphValidator(new NodeRegistry(http));
+    }
 
     @Test
     void plansFanOutInDependencyOrderEvenWhenNodesAreStoredOutOfOrder() {

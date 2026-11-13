@@ -1,5 +1,6 @@
 package dev.flowengine.execution;
 
+import dev.flowengine.node.HttpRequestNode;
 import dev.flowengine.node.NodeRegistry;
 import dev.flowengine.workflow.GraphValidator;
 import dev.flowengine.workflow.WorkflowGraph;
@@ -23,7 +24,7 @@ class ExecutionEngineTest {
 
     @Test
     void mergesJsonAndKeepsSiblingInputsIndependent() {
-        var registry = new NodeRegistry();
+        var registry = registry();
         var engine = new ExecutionEngine(new GraphValidator(registry), registry, clock);
         var values = new LinkedHashMap<String, Object>();
         values.put("count", 2);
@@ -50,7 +51,7 @@ class ExecutionEngineTest {
 
     @Test
     void transformsSelectedFieldsAndPreservesNullsAndNestedValues() {
-        var registry = new NodeRegistry();
+        var registry = registry();
         var engine = new ExecutionEngine(new GraphValidator(registry), registry, clock);
         var input = new LinkedHashMap<String, Object>();
         input.put("sku", "BIKE-123");
@@ -75,7 +76,7 @@ class ExecutionEngineTest {
 
     @Test
     void routesMissingNullAndBlankSkuToTrueAndSkipsTheOtherBranchAndItsDescendants() {
-        var registry = new NodeRegistry();
+        var registry = registry();
         var engine = new ExecutionEngine(new GraphValidator(registry), registry, clock);
         var graph = branchingGraph(Map.of("field", "sku", "operator", "IS_EMPTY"));
         var nullSku = new LinkedHashMap<String, Object>();
@@ -100,7 +101,7 @@ class ExecutionEngineTest {
 
     @Test
     void equalsUsesExactStringMatchingWithoutCoercion() {
-        var registry = new NodeRegistry();
+        var registry = registry();
         var engine = new ExecutionEngine(new GraphValidator(registry), registry, clock);
         var graph = branchingGraph(Map.of("field", "sku", "operator", "EQUALS", "value", "123"));
         assertThat(engine.run(graph, Map.of("sku", "123"), now.plusSeconds(30)).results().get(1).outputPort()).isEqualTo("true");
@@ -110,23 +111,29 @@ class ExecutionEngineTest {
 
     @Test
     void timesOutBeforeExecutingAnyNodeAndSkipsRemainingNodes() {
-        var registry = spy(new NodeRegistry());
+        var registry = spy(registry());
         var outcome = new ExecutionEngine(new GraphValidator(registry), registry, clock).run(simpleGraph(), Map.of(), now);
 
         assertThat(outcome.error()).isEqualTo("Execution timed out.");
         assertThat(outcome.results()).extracting(ExecutionEngine.NodeResult::status).containsExactly(FAILED, SKIPPED);
-        verify(registry, never()).execute(anyString(), anyMap(), anyMap());
+        verify(registry, never()).execute(anyString(), anyMap(), anyMap(), any());
     }
 
     @Test
     void sanitizesUnexpectedNodeFailures() {
-        var registry = spy(new NodeRegistry());
-        doThrow(new IllegalStateException("internal detail")).when(registry).execute(eq("LOG"), anyMap(), anyMap());
+        var registry = spy(registry());
+        doThrow(new IllegalStateException("internal detail")).when(registry).execute(eq("LOG"), anyMap(), anyMap(), any());
         var outcome = new ExecutionEngine(new GraphValidator(registry), registry, clock)
                 .run(simpleGraph(), Map.of(), now.plusSeconds(30));
 
         assertThat(outcome.results()).extracting(ExecutionEngine.NodeResult::status).containsExactly(COMPLETED, FAILED);
         assertThat(outcome.error()).isEqualTo("Node execution failed.");
+    }
+
+    private NodeRegistry registry() {
+        var http = mock(HttpRequestNode.class);
+        when(http.definition()).thenCallRealMethod();
+        return new NodeRegistry(http);
     }
 
     private WorkflowGraph simpleGraph() {

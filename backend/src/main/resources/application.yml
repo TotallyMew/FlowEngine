@@ -49,6 +49,8 @@ management:
       show-details: never
 
 flow:
+  http:
+    allowed-hosts: ${FLOW_HTTP_ALLOWED_HOSTS:}
   operator:
     username: ${FLOW_OPERATOR_USERNAME:operator}
     password: ${FLOW_OPERATOR_PASSWORD:}

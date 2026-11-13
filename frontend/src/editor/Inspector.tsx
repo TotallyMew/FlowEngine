@@ -3,7 +3,7 @@ import { Copy, Link2, MousePointer2, Trash2 } from 'lucide-react'
 import { useStore } from 'zustand'
 import { isTrigger } from '../model'
 import type { CanvasNode, NodeDefinition } from '../model'
-import { configProblem, isBranchPort, outputPorts, parseJsonObject, parseValues } from './graph'
+import { configProblem, httpMethods, isBranchPort, outputPorts, parseJsonObject, parseValues } from './graph'
 import type { createEditor } from './store'
 import { nodePresentation } from './Canvas'
 
@@ -25,6 +25,7 @@ function NodeSettings({ store, node, definition }: { store: Props['store']; node
   const ports = outputPorts(data.kind)
   const [sourcePort, setSourcePort] = useState<string>(ports[0] ?? 'out')
   const update = store.getState().updateNode
+  const httpProblem = data.kind === 'HTTP_REQUEST' && data.config.url ? configProblem(data.kind, data.config) : undefined
   const outgoing = edges.filter(edge => edge.source === id)
   const targets = nodes.filter(other => other.id !== id && !isTrigger(other.data.kind))
 
@@ -53,6 +54,18 @@ function NodeSettings({ store, node, definition }: { store: Props['store']; node
       </label>
       {data.config.operator === 'EQUALS' && <label>Text to match<input value={String(data.config.value ?? '')} maxLength={1000}
         onChange={event => update(id, { config: { ...data.config, value: event.target.value } })} /></label>}
+    </> : data.kind === 'HTTP_REQUEST' ? <>
+      <label>Method<select value={String(data.config.method ?? 'POST')}
+        onChange={event => update(id, { config: { ...data.config, method: event.target.value } })}>
+        {httpMethods.map(method => <option key={method}>{method}</option>)}
+      </select>
+      <small>POST, PUT and PATCH send this node’s input as JSON.</small></label>
+      <label>URL<input type="url" value={String(data.config.url ?? '')} maxLength={2048} placeholder="https://api.example.com/items"
+        aria-invalid={!!httpProblem}
+        onChange={event => update(id, { config: { ...data.config, url: event.target.value } })} />
+        <small>Use a hostname in the server’s HTTPS allowlist.</small>
+      </label>
+      {httpProblem && <p className="field-error" role="alert">{httpProblem}</p>}
     </> : definition.fields.map(field => <label key={field.key}>{field.label}
       {field.kind === 'json'
         ? <textarea className="json-input" rows={7} spellCheck={false} aria-invalid={!!problem || text !== undefined}
